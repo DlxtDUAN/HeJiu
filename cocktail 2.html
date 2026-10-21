@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>今晚，喝哪杯？</title>
+<style>
+:root{
+  --cream:#f7efdc;
+  --card:#fffaf0;
+  --ink:#4a3f2f;
+  --line:#ddcfae;
+  --accent:#c98a4b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0;overflow:hidden;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--cream);color:var(--ink);
+  user-select:none;
+}
+
+/* 格子笔记本背景 */
+.paper{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(178,158,124,.30) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(178,158,124,.30) 1px, transparent 1px);
+  background-size:28px 28px;
+  background-position:-1px -1px;
+}
+.paper::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+}
+
+/* 标题 */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:40;
+  padding:16px 0 22px;
+  text-align:center;
+  font-family:"Kaiti SC","STKaiti","KaiTi",serif;
+  font-size:24px;font-weight:700;letter-spacing:3px;
+  color:#5b4632;
+  background:linear-gradient(var(--cream) 62%, rgba(247,239,220,0));
+  pointer-events:none;
+}
+header .sub{
+  display:block;font-size:11px;letter-spacing:2px;color:#a3927a;
+  font-family:system-ui,sans-serif;font-weight:400;margin-top:3px;
+}
+
+/* 牌堆 */
+#deck{position:fixed;inset:0;z-index:10;}
+
+.card{
+  position:absolute;left:50%;top:50%;
+  width:min(87vw,400px);
+  height:min(72vh,620px);
+  background:var(--card);
+  border:2.5px solid var(--ink);
+  border-radius:26px;
+  box-shadow:0 16px 30px rgba(92,72,42,.16), 0 3px 0 rgba(255,255,255,.9) inset;
+  overflow:hidden;
+  transform:translate(-50%,-50%);
+  transition:transform .42s cubic-bezier(.22,.9,.3,1.05), opacity .3s;
+  will-change:transform;
+  touch-action:none;
+}
+.card.slot-0{box-shadow:0 20px 38px rgba(92,72,42,.22), 0 3px 0 rgba(255,255,255,.9) inset;}
+
+.art{
+  position:absolute;left:0;right:0;top:0;
+  height:calc(100% - 64px);
+  display:flex;align-items:center;justify-content:center;
+  padding:4px 6px 0;
+  transition:height .45s cubic-bezier(.3,.9,.4,1);
+}
+.art svg{width:100%;height:100%;display:block;}
+
+.name{
+  position:absolute;left:0;right:0;height:64px;
+  top:calc(100% - 64px);
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(#f6e8c9,#f1dfba);
+  border-top:2.5px solid var(--ink);
+  font-size:20px;font-weight:700;letter-spacing:2px;
+  color:#4a3f2f;
+  transition:top .45s cubic-bezier(.3,.9,.4,1);
+  font-family:"Kaiti SC","STKaiti","KaiTi",serif;
+}
+
+.panel{
+  position:absolute;left:0;right:0;
+  top:calc(40% + 64px);bottom:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s .1s;
+}
+.ing-tip{
+  flex:0 0 auto;
+  text-align:center;
+  font-size:11px;
+  color:#b08a5a;
+  letter-spacing:1px;
+  padding:6px 0 2px;
+}
+.ing-list{
+  flex:1;overflow-y:auto;padding:2px 18px 4px;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y;
+  scrollbar-width:none;
+}
+.ing-list::-webkit-scrollbar{display:none;}
+
+.ing-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:7px 0;
+  border-bottom:1.5px dashed rgba(74,63,47,.18);
+  opacity:0;transform:translateY(-8px);
+  animation:slideIn .34s forwards;
+}
+@keyframes slideIn{to{opacity:1;transform:translateY(0);}}
+.ing-ico{
+  width:34px;height:34px;flex:0 0 34px;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:2px;
+}
+.ing-ico svg{width:100%;height:100%;}
+.ing-main{flex:1;min-width:0;}
+.ing-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.ing-name{font-size:14.5px;color:#4a3f2f;}
+.ing-amt{font-size:12.5px;color:#9a876b;font-family:ui-monospace,monospace;white-space:nowrap;}
+.ing-alt{font-size:11px;color:#b08a5a;margin-top:2px;line-height:1.3;}
+
+.make-btn{
+  flex:0 0 auto;
+  margin:6px auto 14px;
+  padding:10px 30px;
+  font-size:14.5px;letter-spacing:3px;font-weight:700;
+  color:#fffaf0;background:#c98a4b;
+  border:2.5px solid var(--ink);
+  border-radius:99px;
+  box-shadow:0 3px 0 var(--ink);
+  font-family:inherit;cursor:pointer;
+  transition:transform .12s, box-shadow .12s;
+}
+.make-btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink);}
+
+.card.expanded .art{height:40%;}
+.card.expanded .name{top:40%;}
+.card.expanded .panel{opacity:1;pointer-events:auto;}
+
+/* 制作流程视图 */
+#stepsView{
+  position:fixed;inset:0;z-index:60;
+  background:rgba(247,239,220,.98);
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s;
+}
+#stepsView.show{opacity:1;pointer-events:auto;}
+
+.prog-wrap{padding:26px 30px 6px;flex:0 0 auto;}
+.prog-track{
+  height:10px;border-radius:99px;background:#e8dcbe;
+  border:2px solid var(--ink);overflow:hidden;
+}
+.prog-fill{
+  height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,#e8b673,#c98a4b);
+  transition:width .38s cubic-bezier(.3,.9,.4,1);
+}
+.prog-label{
+  text-align:center;font-size:12px;letter-spacing:2px;color:#a3927a;margin-top:8px;
+}
+
+#stepStage{
+  flex:1;position:relative;display:flex;align-items:center;justify-content:center;
+  touch-action:none;
+}
+
+.step-card{
+  position:absolute;left:50%;top:50%;
+  width:min(84vw,380px);
+  min-height:min(46vh,340px);
+  max-height:62vh;
+  background:var(--card);
+  border:2.5px solid var(--ink);
+  border-radius:24px;
+  box-shadow:0 16px 30px rgba(92,72,42,.16);
+  padding:26px 24px;
+  display:flex;flex-direction:column;
+  transform:translate(-50%,-50%);
+  transition:transform .36s cubic-bezier(.22,.9,.3,1.05), opacity .3s;
+  overflow:hidden;
+}
+.step-badge{
+  font-family:ui-monospace,monospace;
+  font-size:12px;letter-spacing:3px;color:#c98a4b;
+  margin-bottom:14px;font-weight:700;
+}
+.step-text{
+  flex:1;font-size:17px;line-height:1.85;color:#4a3f2f;
+  overflow-y:auto;
+  font-family:"Kaiti SC","STKaiti","KaiTi",serif;
+}
+.step-dots{
+  display:flex;gap:6px;justify-content:center;margin-top:16px;
+}
+.step-dots i{
+  width:7px;height:7px;border-radius:99px;background:#e0d3b4;
+  transition:background .3s,width .3s;
+}
+.step-dots i.on{background:#c98a4b;width:20px;}
+
+.steps-hint{
+  flex:0 0 auto;text-align:center;
+  font-size:12px;color:#a3927a;letter-spacing:2px;
+  padding:14px 0 26px;
+}
+.steps-close{
+  position:absolute;top:20px;right:22px;
+  width:34px;height:34px;border-radius:50%;
+  border:2px solid var(--ink);background:var(--card);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;color:var(--ink);cursor:pointer;z-index:5;
+  line-height:1;
+}
+</style>
+</head>
+<body>
+
+<div class="paper"></div>
+
+<header>
+  今晚，喝哪杯？
+  <span class="sub">上滑 / 下滑 换一杯</span>
+</header>
+
+<div id="deck"></div>
+
+<div id="stepsView">
+  <div class="prog-wrap">
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-label" id="progLabel">1 / 1</div>
+  </div>
+  <div id="stepStage"></div>
+  <div class="steps-hint">← 左右滑动切换步骤 →</div>
+  <div class="steps-close" id="closeSteps">✕</div>
+</div>
+
+<!-- 手绘滤镜 -->
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <defs>
+    <filter id="rough" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<script>
+/* ============================================================
+   1. 酒谱数据   格式：名称|杯型|颜色|装饰|配料|步骤
+   ============================================================ */
+const RAW = `
+莫吉托|highball|#d9eab0|mint,lime|白朗姆酒:45ml~青柠汁:20ml~糖浆:15ml~薄荷叶:8片~苏打水:适量|将薄荷叶与青柠角放入杯中轻压出香气~加满碎冰，倒入朗姆酒与糖浆~注入苏打水，由下往上轻轻搅匀~以薄荷枝与青柠片装饰
+古典鸡尾酒|rocks|#c9762b|orange,cherry|波本威士忌:60ml~方糖:1块~苦精:3滴~橙皮:1片|方糖放入杯中，滴上苦精与少许清水~压碎方糖，倒入波本威士忌~加一大块冰，搅拌二十秒~挤入橙皮油，放樱桃装饰
+玛格丽特|margarita|#e8e08a|lime,salt|龙舌兰:45ml~君度橙酒:20ml~青柠汁:20ml~盐:适量|用青柠角润湿杯口，蘸上细盐~杯中加冰，倒入龙舌兰、君度与青柠汁~摇匀后滤入杯中~以青柠片装饰
+大都会|martini|#e0507a|lime|伏特加:45ml~君度橙酒:15ml~蔓越莓汁:30ml~青柠汁:15ml|将所有材料倒入摇酒壶加冰~用力摇匀约十秒~滤入冰镇过的马天尼杯~以橙皮或青柠皮装饰
+干马天尼|martini|#eef0da|olive|金酒:60ml~干味美思:10ml~橄榄:1颗|马天尼杯提前冰镇~壶中加冰，倒入金酒与干味美思~搅拌三十秒至充分冷却~滤入杯中，放入橄榄
+曼哈顿|martini|#a83232|cherry|黑麦威士忌:50ml~甜味美思:20ml~安高天娜苦精:2滴|杯中加冰，倒入所有液体材料~搅拌约二十五秒~滤入冰镇的马天尼杯~放入一颗酒渍樱桃
+内格罗尼|rocks|#c0392b|orange|金酒:30ml~金巴利:30ml~甜味美思:30ml|古典杯中放入大冰块~依次倒入金酒、金巴利与甜味美思~搅拌约二十秒~以橙皮装饰
+威士忌酸|rocks|#e0b060|cherry,lemon|波本威士忌:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|将材料倒入摇壶干摇十五秒~加冰再摇十五秒~滤入装有冰块的古典杯~滴几滴苦精，放樱桃
+长岛冰茶|highball|#b87333|lemon|伏特加:15ml~金酒:15ml~白朗姆:15ml~龙舌兰:15ml~君度:15ml~柠檬汁:25ml~可乐:适量|将五种基酒与柠檬汁倒入装满冰的杯中~轻轻搅拌~缓慢注入可乐至八分满~以柠檬片装饰
+蓝色夏威夷|hurricane|#4bb8e8|pineapple,cherry|白朗姆:30ml~蓝橙力娇酒:20ml~椰奶:30ml~菠萝汁:60ml|壶中加冰倒入所有材料~摇匀约十二秒~滤入装满碎冰的飓风杯~以菠萝叶与樱桃装饰
+迈泰|rocks|#e0a13c|mint,lime|陈年朗姆:30ml~黑朗姆:30ml~橙皮利口酒:15ml~杏仁糖浆:15ml~青柠汁:25ml|将材料倒入摇壶加冰~摇匀后滤入装满碎冰的古典杯~倒入黑朗姆做出分层~以薄荷枝与青柠片装饰
+皮斯科酸|coupe|#f0e2b0|cherry|皮斯科酒:50ml~青柠汁:25ml~糖浆:20ml~蛋白:1个~苦精:2滴|材料倒入摇壶干摇二十秒~加冰再摇十五秒~滤入碟形杯~表面滴苦精画出纹路
+代基里|coupe|#f2f0d0|lime|白朗姆:60ml~青柠汁:25ml~糖浆:15ml|摇壶中加满冰~倒入所有材料~用力摇匀十二秒~滤入冰镇碟形杯，放青柠角
+边车|coupe|#e8b34b|lemon|干邑白兰地:50ml~君度橙酒:20ml~柠檬汁:20ml|摇壶加冰倒入所有材料~摇匀约十二秒~滤入糖边碟形杯~以柠檬皮装饰
+白色佳人|coupe|#f6f2dd|lemon|金酒:40ml~君度橙酒:20ml~柠檬汁:20ml|摇壶加冰~倒入材料摇匀十二秒~滤入冰镇碟形杯~以柠檬皮卷装饰
+金菲士|highball|#f4f0d6|lemon|金酒:45ml~柠檬汁:25ml~糖浆:15ml~苏打水:适量|摇壶加冰摇匀材料~滤入装冰的高球杯~注入苏打水至满~以柠檬片装饰
+汤姆柯林斯|collins|#eef2cf|lemon,cherry|金酒:45ml~柠檬汁:25ml~糖浆:15ml~苏打水:适量|柯林斯杯加满冰~倒入金酒、柠檬汁与糖浆~注入苏打水搅匀~以柠檬片与樱桃装饰
+血腥玛丽|highball|#c0392b|celery,lemon|伏特加:45ml~番茄汁:90ml~柠檬汁:15ml~伍斯特酱:3滴~盐胡椒:适量|高球杯中加冰~倒入伏特加与番茄汁~加入柠檬汁与调味料~用芹菜杆搅拌并装饰
+螺丝刀|highball|#f0a63c|orange|伏特加:45ml~橙汁:120ml|高球杯加满冰~倒入伏特加~注入橙汁至八分满~轻轻搅匀，放橙片
+伏特加汤力|highball|#eef4f6|lime|伏特加:45ml~汤力水:120ml~青柠角:1个|高球杯加满冰~倒入伏特加~注入汤力水~挤入青柠汁并放入杯中
+金汤力|highball|#e8f0d8|lime|金酒:45ml~汤力水:120ml~青柠角:1个|高球杯加满冰~倒入金酒~沿杯壁注入汤力水~轻挤青柠角放入杯中
+自由古巴|highball|#8b4a24|lime|白朗姆:45ml~可乐:120ml~青柠汁:10ml|高球杯加满冰~倒入白朗姆与青柠汁~注入可乐~轻轻搅匀，放青柠片
+阿佩罗气泡|coupe|#f0842c|orange|阿佩罗:60ml~普罗塞克起泡酒:90ml~苏打水:30ml|大酒杯中加满冰~倒入阿佩罗~注入起泡酒与苏打水~轻搅后放橙片
+皇家基尔|flute|#d43a5a|cherry|黑加仑利口酒:15ml~香槟:120ml|笛形杯冰镇~先倒入黑加仑利口酒~缓慢注入冰镇香槟~轻搅，放一颗樱桃
+含羞草|flute|#f2a83c|orange|橙汁:60ml~香槟:90ml|笛形杯冰镇~先倒入橙汁~沿杯壁缓慢注入香槟~不搅拌，直接饮用
+贝里尼|flute|#f0b48c|peach|白桃泥:50ml~普罗塞克:100ml|将白桃泥倒入冰镇笛形杯~缓慢注入起泡酒~轻轻搅动一次即可
+白色俄罗斯|rocks|#e8dcc8|none|伏特加:45ml~咖啡利口酒:20ml~淡奶油:30ml|古典杯加满冰~倒入伏特加与咖啡利口酒~缓慢淋入淡奶油做出分层~轻轻搅拌
+黑色俄罗斯|rocks|#5a3218|none|伏特加:45ml~咖啡利口酒:25ml|古典杯加满冰~倒入伏特加~倒入咖啡利口酒~搅拌约十秒
+教父|rocks|#b5651d|orange|苏格兰威士忌:50ml~杏仁利口酒:20ml|古典杯加大冰块~倒入苏格兰威士忌~倒入杏仁利口酒~轻轻搅拌，放橙皮
+海风|highball|#e8607a|lime|伏特加:45ml~蔓越莓汁:90ml~西柚汁:45ml|高球杯加满冰~倒入伏特加~注入两种果汁~轻搅，以青柠片装饰
+鳕鱼角|highball|#c0392b|lime|伏特加:45ml~蔓越莓汁:120ml~青柠汁:10ml|高球杯加满冰~倒入伏特加~注入蔓越莓汁~挤入青柠汁
+蜂之膝|coupe|#f0d060|lemon|金酒:50ml~蜂蜜糖浆:20ml~柠檬汁:20ml|摇壶加冰倒入所有材料~摇匀约十二秒~滤入冰镇碟形杯~以柠檬皮装饰
+美国佬|rocks|#d94f2b|orange|金巴利:30ml~甜味美思:30ml~苏打水:适量|古典杯加冰~倒入金巴利与甜味美思~注入苏打水~放橙片轻搅
+花花公子|rocks|#b83030|orange|波本威士忌:30ml~金巴利:30ml~甜味美思:30ml|古典杯加大冰块~依次倒入三种材料~搅拌约二十秒~以橙皮装饰
+萨泽拉克|rocks|#c98a3b|lemon|黑麦威士忌:60ml~方糖:1块~苦精:3滴~苦艾酒:少许|古典杯用苦艾酒润杯~另一杯中压碎方糖加苦精与威士忌~加冰搅拌后滤入杯中~挤柠檬皮油
+杰克玫瑰|martini|#c2334a|apple|苹果杰克白兰地:50ml~青柠汁:20ml~石榴糖浆:15ml|摇壶加冰倒入材料~摇匀十二秒~滤入冰镇马天尼杯~以苹果片装饰
+飞行|martini|#9b6ec4|cherry|金酒:45ml~黑樱桃利口酒:15ml~紫罗兰利口酒:10ml~柠檬汁:15ml|摇壶加冰倒入材料~摇匀十二秒~滤入冰镇马天尼杯~放一颗樱桃
+三叶草俱乐部|coupe|#f0a0b0|berry|金酒:45ml~覆盆子糖浆:15ml~柠檬汁:20ml~蛋白:1个|干摇二十秒后加冰再摇十五秒~滤入冰镇碟形杯~以覆盆子装饰
+粉色佳人|coupe|#f08a9a|cherry|金酒:40ml~苹果杰克:15ml~柠檬汁:15ml~石榴糖浆:10ml~蛋白:1个|干摇后加冰摇匀~滤入冰镇碟形杯~以樱桃装饰
+亚历山大|coupe|#c8a878|none|干邑白兰地:40ml~可可利口酒:20ml~淡奶油:20ml|摇壶加冰倒入所有材料~用力摇匀十五秒~滤入冰镇碟形杯~表面撒豆蔻粉
+蚱蜢|coupe|#9fd6a8|mint|绿薄荷利口酒:30ml~可可利口酒:30ml~淡奶油:30ml|摇壶加冰倒入所有材料~摇匀约十二秒~滤入冰镇碟形杯~表面撒巧克力碎
+B-52|shot|#c8a060|none|咖啡利口酒:15ml~百利甜酒:15ml~君度橙酒:15ml|子弹杯依次分层倒入~先咖啡利口酒~再百利甜~最后君度~点火或直接一口饮尽
+爱尔兰咖啡|copper|#8b5a2b|none|爱尔兰威士忌:45ml~热咖啡:120ml~红糖:2勺~淡奶油:适量|杯中倒入威士忌与红糖~注入热咖啡搅拌~缓慢淋入微打发的奶油~不要搅拌，趁热喝
+浓缩咖啡马天尼|martini|#4a2c18|coffee|伏特加:40ml~咖啡利口酒:20ml~浓缩咖啡:30ml~糖浆:10ml|将所有材料倒入摇壶加满冰~用力摇出泡沫~滤入冰镇马天尼杯~以咖啡豆装饰
+盘尼西林|rocks|#d9b45c|lemon|调和苏格兰威士忌:60ml~蜂蜜姜糖浆:20ml~柠檬汁:20ml~艾雷岛威士忌:10ml|前三样材料加冰摇匀~滤入加冰古典杯~表面浮一层艾雷岛威士忌~以姜片装饰
+纸飞机|martini|#e0a060|cherry|波本威士忌:30ml~阿佩罗:30ml~阿玛罗:30ml~柠檬汁:30ml|摇壶加冰倒入所有材料~摇匀约十二秒~滤入冰镇马天尼杯~以樱桃装饰
+最后一句话|martini|#c8e0a0|cherry|金酒:25ml~绿查特酒:25ml~樱桃利口酒:25ml~青柠汁:25ml|摇壶加冰倒入所有材料~摇匀约十二秒~滤入冰镇马天尼杯~放樱桃
+尸体复活2号|coupe|#f2e8c0|orange|金酒:25ml~君度:25ml~利莱白:25ml~柠檬汁:25ml~苦艾酒:1滴|除苦艾外材料加冰摇匀~滤入冰镇碟形杯~滴入苦艾酒~以橙皮装饰
+吉姆雷特|coupe|#e8f0d0|lime|金酒:60ml~青柠汁:20ml~糖浆:20ml|摇壶加冰倒入材料~摇匀约十二秒~滤入冰镇碟形杯~以青柠片装饰
+热托迪|copper|#c89a4b|lemon|威士忌:45ml~热水:120ml~蜂蜜:2勺~柠檬汁:15ml~肉桂棒:1根|杯中倒入蜂蜜与柠檬汁~注入热水搅拌溶解~加入威士忌~放肉桂棒与柠檬片
+薄荷朱利普|rocks|#cfe0a0|mint|波本威士忌:60ml~薄荷叶:10片~糖浆:15ml|杯中放入薄荷与糖浆轻压~填满碎冰~倒入波本威士忌~搅拌至杯壁结霜，插薄荷枝
+南方之滨|coupe|#d8ecc0|mint,lime|金酒:50ml~青柠汁:20ml~糖浆:15ml~薄荷叶:6片|薄荷与材料一起加冰摇匀~双重过滤至冰镇碟形杯~以薄荷尖装饰
+拉莫斯金菲士|highball|#f4f0dc|none|金酒:45ml~柠檬汁:15ml~青柠汁:15ml~糖浆:25ml~淡奶油:30ml~蛋白:1个~苏打水:适量~橙花水:2滴|所有材料（除苏打）干摇一分钟~加冰再摇一分钟~滤入高球杯~注入苏打水形成泡沫柱
+僵尸|hurricane|#e07a2c|mint,cherry|白朗姆:30ml~金朗姆:30ml~黑朗姆:30ml~百香果糖浆:20ml~青柠汁:20ml~石榴糖浆:10ml~苦精:2滴|所有材料加冰摇匀~滤入装满碎冰的飓风杯~以薄荷与樱桃装饰
+新加坡司令|hurricane|#d94a3a|pineapple,cherry|金酒:30ml~樱桃利口酒:15ml~君度:10ml~菠萝汁:60ml~青柠汁:15ml~石榴糖浆:10ml~苏打水:适量|材料加冰摇匀滤入杯中~注入苏打水~以菠萝片与樱桃装饰
+飓风|hurricane|#e8654a|orange,cherry|白朗姆:30ml~黑朗姆:30ml~百香果糖浆:30ml~柠檬汁:20ml~石榴糖浆:10ml|材料加冰摇匀~滤入装满冰的飓风杯~以橙片与樱桃装饰
+暗黑风暴|highball|#6b3a1a|lime|黑朗姆:60ml~姜汁啤酒:100ml~青柠汁:10ml|高球杯加满冰~倒入黑朗姆~缓慢注入姜汁啤酒~挤入青柠汁，放青柠角
+莫斯科骡子|copper|#e8e0b0|lime|伏特加:45ml~姜汁啤酒:100ml~青柠汁:15ml|铜杯加满冰~倒入伏特加与青柠汁~注入姜汁啤酒~轻搅，放青柠角
+帕洛玛|highball|#f08a8a|lime|龙舌兰:45ml~西柚苏打:120ml~青柠汁:10ml~盐:1撮|高球杯加冰~杯口抹盐~倒入龙舌兰与青柠汁~注入西柚苏打，放青柠片
+龙舌兰日出|highball|#f0a03a|orange,cherry|龙舌兰:45ml~橙汁:90ml~石榴糖浆:15ml|高球杯加冰倒入龙舌兰~注入橙汁搅匀~缓慢倒入石榴糖浆沉底~不搅拌，放橙片
+恶魔|highball|#c8304a|lime|龙舌兰:45ml~黑加仑利口酒:15ml~姜汁啤酒:90ml~青柠汁:15ml|材料加冰摇匀滤入杯中~注入姜汁啤酒~以青柠角装饰
+巴哈马妈妈|hurricane|#e08a3a|pineapple,cherry|白朗姆:30ml~黑朗姆:20ml~椰子利口酒:15ml~菠萝汁:60ml~橙汁:30ml~石榴糖浆:10ml|所有材料加冰摇匀~滤入装满冰的飓风杯~以菠萝与樱桃装饰
+秀兰·邓波儿|highball|#e85a8a|cherry|姜汁汽水:120ml~石榴糖浆:15ml~青柠汁:10ml|高球杯加满冰~注入姜汁汽水~倒入石榴糖浆~放樱桃与青柠片
+灰狗|highball|#f0d08a|lime|伏特加:45ml~西柚汁:120ml|高球杯加满冰~倒入伏特加~注入西柚汁~挤青柠汁搅匀
+咸狗|rocks|#f0c88a|lime|伏特加:45ml~西柚汁:90ml~盐:适量|杯口蘸一圈细盐~杯中加冰倒入伏特加~注入西柚汁~轻搅，放青柠片
+血腥公牛|highball|#b83030|celery|伏特加:45ml~番茄汁:60ml~牛肉汤:60ml~柠檬汁:10ml~辣酱:2滴|高球杯加冰~倒入所有材料~用芹菜杆搅拌均匀~以芹菜装饰
+米凯拉达|highball|#c03020|lime|淡啤酒:200ml~青柠汁:25ml~番茄汁:30ml~辣酱:3滴~盐:适量|杯口蘸盐~加冰倒入青柠汁与调味料~缓慢注入冰啤酒~轻搅后饮用
+椰林飘香|hurricane|#f4efdc|pineapple|白朗姆:45ml~椰奶:30ml~菠萝汁:90ml|材料加冰摇匀~滤入装满碎冰的飓风杯~以菠萝叶装饰
+止痛药|rocks|#f0d9a8|pineapple|黑朗姆:60ml~菠萝汁:60ml~橙汁:30ml~椰奶:30ml|所有材料加冰摇匀~滤入装满碎冰的杯中~表面撒肉豆蔻粉
+丛林鸟|rocks|#8b3a2a|pineapple|黑朗姆:45ml~金巴利:20ml~菠萝汁:45ml~青柠汁:15ml~糖浆:10ml|材料加冰摇匀~滤入加冰古典杯~以菠萝片装饰
+海军格罗格|rocks|#d9a04a|mint,lime|黑朗姆:30ml~金朗姆:30ml~青柠汁:20ml~西柚汁:20ml~肉桂糖浆:10ml|材料加冰摇匀~滤入装满碎冰的杯中~以薄荷与青柠装饰
+土星|martini|#e8c05a|cherry|金酒:45ml~百香果糖浆:20ml~柠檬汁:20ml~杏仁糖浆:10ml|材料加冰摇匀~滤入冰镇马天尼杯~放樱桃
+三叉戟|rocks|#d9a860|lime|金酒:30ml~阿佩罗:30ml~樱桃利口酒:10ml~青柠汁:15ml|材料加冰摇匀~滤入加冰古典杯~以青柠皮装饰
+裸体与名人|martini|#e07a4a|none|梅斯卡尔:30ml~阿佩罗:30ml~接骨木花利口酒:30ml~青柠汁:30ml|材料加冰摇匀~滤入冰镇马天尼杯~以青柠皮装饰
+金巴利酸|coupe|#d94a2b|orange|金巴利:50ml~柠檬汁:20ml~糖浆:15ml~苏打水:适量|材料加冰摇匀~滤入冰镇碟形杯~注入少许苏打水~以橙片装饰
+老古巴|flute|#e8a840|mint|陈年朗姆:45ml~青柠汁:20ml~糖浆:15ml~薄荷叶:6片~起泡酒:60ml~苦精:2滴|薄荷与材料加冰摇匀~滤入笛形杯~注入起泡酒~以薄荷枝装饰
+布朗克斯|martini|#e8954a|orange|金酒:30ml~干味美思:15ml~甜味美思:15ml~橙汁:20ml|材料加冰摇匀~滤入冰镇马天尼杯~以橙皮装饰
+玛丽·碧克馥|martini|#e05a5a|cherry|白朗姆:50ml~菠萝汁:25ml~石榴糖浆:10ml~樱桃利口酒:5ml|材料加冰摇匀~滤入冰镇马天尼杯~放一颗樱桃
+哈瓦那特调|highball|#e8b060|lime|白朗姆:45ml~菠萝汁:60ml~青柠汁:15ml~糖浆:10ml~苏打水:适量|材料加冰摇匀~滤入加冰高球杯~注入苏打水，放青柠片
+白色尼格罗尼|rocks|#f0ecd8|orange|金酒:30ml~利莱白:30ml~苏打水:适量|古典杯加冰~倒入金酒与利莱白~注入苏打水~以橙皮装饰
+罗索美式|rocks|#c8503a|orange|金巴利:30ml~甜味美思:30ml~苏打水:适量|古典杯加冰~倒入金巴利与甜味美思~注入苏打水~放橙片
+金巴利橙|highball|#e04a2a|orange|金巴利:45ml~橙汁:120ml|高球杯加满冰~倒入金巴利~注入橙汁~轻搅，放橙片
+阿美利加诺|rocks|#c84a30|orange|金巴利:30ml~甜味美思:30ml~苏打水:适量~柠檬皮:1片|古典杯加冰~倒入金巴利与甜味美思~注入苏打水~以柠檬皮装饰
+波士顿酸|rocks|#e0b870|cherry|波本威士忌:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个~红酒:15ml|材料（除红酒）干摇后加冰摇匀~滤入加冰古典杯~表面浮一层红酒~放樱桃
+纽约酸|rocks|#d94a4a|lemon|黑麦威士忌:50ml~柠檬汁:25ml~糖浆:15ml~红酒:20ml|材料加冰摇匀~滤入加冰古典杯~缓慢浮上红酒~以柠檬皮装饰
+加州酸|rocks|#e8a860|orange|波本威士忌:50ml~柠檬汁:20ml~橙汁:20ml~糖浆:10ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以橙片装饰
+皮斯科可乐|highball|#8b5a2b|lime|皮斯科酒:45ml~可乐:120ml~青柠汁:10ml|高球杯加冰~倒入皮斯科与青柠汁~注入可乐~轻搅，放青柠片
+智利酸|coupe|#f0e0b0|none|皮斯科酒:50ml~柠檬汁:25ml~糖浆:20ml~蛋白:1个|干摇二十秒后加冰摇十五秒~滤入冰镇碟形杯~表面撒肉桂粉
+朗姆潘趣|rocks|#e0703a|orange,cherry|黑朗姆:30ml~白朗姆:30ml~橙汁:40ml~菠萝汁:40ml~石榴糖浆:10ml|所有材料加冰摇匀~滤入大杯加冰~以橙片与樱桃装饰
+种植园主潘趣|rocks|#d97a2c|mint|黑朗姆:60ml~青柠汁:20ml~甘蔗糖浆:20ml~苦精:3滴~苏打水:适量|材料加冰摇匀~滤入加冰古典杯~注入苏打水~以薄荷枝装饰
+总统|martini|#e8c060|orange|白朗姆:45ml~干味美思:20ml~石榴糖浆:5ml~橙皮:1片|材料加冰搅匀~滤入冰镇马天尼杯~挤橙皮油
+百加得鸡尾酒|martini|#e8e0c0|lime|白朗姆:45ml~青柠汁:20ml~石榴糖浆:5ml~糖浆:5ml|材料加冰摇匀~滤入冰镇马天尼杯~以青柠片装饰
+草莓代基里|coupe|#e8586a|berry|白朗姆:50ml~草莓:4颗~青柠汁:20ml~糖浆:10ml|草莓压碎后与材料加冰摇匀~双重过滤至冰镇碟形杯~以草莓装饰
+芒果代基里|coupe|#f0b040|fruit|白朗姆:50ml~芒果泥:40ml~青柠汁:20ml|材料加冰摇匀~滤入冰镇碟形杯~以芒果片装饰
+香蕉代基里|coupe|#f0e0a0|fruit|白朗姆:50ml~香蕉:半根~青柠汁:20ml~糖浆:10ml|香蕉压碎与材料加冰摇匀~双重过滤至碟形杯~以香蕉片装饰
+热情果莫吉托|highball|#f0c04a|mint|白朗姆:45ml~百香果:1个~青柠汁:20ml~薄荷叶:8片~苏打水:适量|百香果与薄荷青柠入杯轻压~加碎冰倒入朗姆~注入苏打水搅匀~以薄荷装饰
+加勒比日落|highball|#e0603a|orange|黑朗姆:40ml~橙汁:60ml~菠萝汁:40ml~石榴糖浆:10ml|材料（除糖浆）加冰摇匀~滤入加冰高球杯~缓慢倒入石榴糖浆~以橙片装饰
+牙买加朗姆潘趣|rocks|#c8503a|cherry|牙买加朗姆:60ml~橙汁:40ml~菠萝汁:40ml~青柠汁:15ml~苦精:2滴|材料加冰摇匀~滤入加冰古典杯~以樱桃装饰
+黑朗姆老式|rocks|#6b3a1a|orange|黑朗姆:60ml~糖浆:10ml~苦精:3滴~橙皮:1片|古典杯加大冰块~倒入朗姆、糖浆与苦精~搅拌二十秒~挤橙皮油
+朗姆酸|rocks|#e0b870|lime|白朗姆:50ml~青柠汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~滴苦精，放青柠片
+朗姆高球|highball|#e8e0c8|lime|白朗姆:45ml~苏打水:120ml~青柠角:1个|高球杯加满冰~倒入朗姆~注入苏打水~挤青柠角放入
+深色朗姆可乐|highball|#5a3218|lime|黑朗姆:45ml~可乐:120ml~青柠汁:10ml|高球杯加满冰~倒入黑朗姆~注入可乐~挤青柠汁
+提基太阳|tiki|#f0a030|pineapple|白朗姆:30ml~黑朗姆:30ml~百香果糖浆:20ml~菠萝汁:60ml~青柠汁:20ml|材料加冰摇匀~滤入提基杯加碎冰~以菠萝叶装饰
+菠萝王|tiki|#f0c040|pineapple|陈年朗姆:60ml~菠萝汁:60ml~青柠汁:20ml~蜂蜜糖浆:15ml~苦精:2滴|材料加冰摇匀~滤入提基杯加碎冰~以菠萝片装饰
+热黄油朗姆|copper|#c89a4a|none|黑朗姆:45ml~热水:120ml~黄油:10g~红糖:2勺~肉桂粉:适量|杯中放入黄油与红糖~注入热水搅拌融化~倒入黑朗姆~撒肉桂粉
+香料朗姆苹果酒|copper|#c8783a|none|香料朗姆:45ml~热苹果酒:120ml~肉桂棒:1根|杯中倒入香料朗姆~注入热苹果酒~放肉桂棒搅拌~趁热饮用
+马丁内斯|martini|#e8c890|cherry|老汤姆金酒:45ml~甜味美思:20ml~樱桃利口酒:10ml~苦精:2滴|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+粉红金酒|coupe|#f0a0b8|berry|金酒:50ml~覆盆子糖浆:15ml~柠檬汁:20ml~蛋白:1个|干摇后加冰摇匀~滤入冰镇碟形杯~以覆盆子装饰
+金酒酸|rocks|#e8d8a8|lemon|金酒:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+金酒罗勒|highball|#a8d878|mint|金酒:45ml~罗勒叶:6片~柠檬汁:20ml~糖浆:10ml~苏打水:适量|罗勒与材料轻压加冰摇匀~滤入加冰高球杯~注入苏打水~以罗勒叶装饰
+金酒黄瓜|coupe|#d8f0c0|cucumber|金酒:50ml~黄瓜片:4片~青柠汁:20ml~糖浆:10ml|黄瓜与材料加冰摇匀~双重过滤至冰镇碟形杯~以黄瓜片装饰
+花园金酒|highball|#c8e8a8|mint,cucumber|金酒:45ml~黄瓜汁:40ml~青柠汁:20ml~糖浆:10ml~苏打水:适量|材料加冰摇匀~滤入加冰高球杯~注入苏打水~以薄荷与黄瓜装饰
+蓝月亮|martini|#8ab0e8|lemon|金酒:50ml~紫罗兰利口酒:20ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~以柠檬皮装饰
+阿拉斯加|martini|#f0e08a|cherry|金酒:45ml~黄查特酒:15ml~橙味苦精:2滴|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+尼格罗尼酸|coupe|#d9603a|orange|金酒:30ml~金巴利:30ml~甜味美思:15ml~柠檬汁:20ml|材料加冰摇匀~滤入冰镇碟形杯~以橙片装饰
+金巴利汤力|highball|#e0543a|orange|金巴利:45ml~汤力水:120ml~橙片:1片|高球杯加满冰~倒入金巴利~注入汤力水~轻搅，放橙片
+金巴利气泡|flute|#e0643a|none|金巴利:45ml~普罗塞克:90ml|笛形杯加冰~倒入金巴利~注入起泡酒~轻搅一次
+西瓜金酒|highball|#f06a7a|watermelon|金酒:45ml~西瓜汁:100ml~青柠汁:15ml|高球杯加满冰~倒入金酒与青柠汁~注入西瓜汁~轻搅，放西瓜块
+玫瑰金酒|coupe|#f0b0c0|none|金酒:45ml~玫瑰糖浆:15ml~柠檬汁:20ml~蛋白:1个|干摇后加冰摇匀~滤入冰镇碟形杯~表面撒玫瑰花瓣
+蓝莓金酒|highball|#8a6ac8|berry|金酒:45ml~蓝莓:10颗~青柠汁:20ml~苏打水:适量|蓝莓轻压与金酒青柠摇匀~滤入加冰高球杯~注入苏打水
+葡萄柚金汤力|highball|#f0a0a0|none|金酒:45ml~西柚汁:40ml~汤力水:80ml|高球杯加冰~倒入金酒与西柚汁~注入汤力水~轻搅
+迷迭香金汤力|highball|#c8e0b0|none|金酒:45ml~迷迭香:1枝~汤力水:120ml|高球杯加冰~放入迷迭香~倒入金酒~注入汤力水~轻搅
+红鲷鱼|highball|#c83030|celery|金酒:45ml~番茄汁:120ml~柠檬汁:15ml~辣酱:2滴~盐胡椒:适量|高球杯加冰~倒入所有材料~用芹菜杆搅拌均匀~以芹菜装饰
+金酒大都会|coupe|#e05a7a|lime|金酒:40ml~君度:15ml~蔓越莓汁:30ml~青柠汁:15ml|材料加冰摇匀~滤入冰镇碟形杯~以青柠皮装饰
+性感沙滩|highball|#f07a5a|orange|伏特加:30ml~桃子利口酒:30ml~橙汁:60ml~蔓越莓汁:40ml|材料加冰摇匀~滤入加冰高球杯~以橙片装饰
+蓝潟湖|highball|#3aa8e0|lemon|伏特加:45ml~蓝橙力娇酒:20ml~柠檬汁:15ml~苏打水:适量|高球杯加冰~倒入伏特加、蓝橙与柠檬汁~注入苏打水~放柠檬片
+神风特攻|martini|#e8e8a8|lime|伏特加:30ml~君度:30ml~青柠汁:30ml|材料加冰摇匀~滤入冰镇马天尼杯~以青柠片装饰
+柠檬滴|martini|#f0e870|lemon|伏特加:50ml~柠檬汁:20ml~糖浆:15ml~柠檬角:1块|材料加冰摇匀~滤入糖边马天尼杯~放柠檬角
+苹果马天尼|martini|#a8d860|apple|伏特加:45ml~苹果利口酒:30ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~以苹果片装饰
+巧克力马天尼|martini|#6b4020|chocolate|伏特加:30ml~可可利口酒:30ml~淡奶油:30ml|材料加冰用力摇匀~滤入巧克力酱挂壁的杯中~表面撒巧克力碎
+法国马天尼|martini|#c88ae0|none|伏特加:30ml~香博利口酒:15ml~菠萝汁:30ml|材料加冰摇匀~滤入冰镇马天尼杯~以覆盆子装饰
+巴拉莱卡|martini|#e8d8a0|lemon|伏特加:45ml~蜂蜜利口酒:20ml~柠檬汁:20ml|材料加冰摇匀~滤入冰镇马天尼杯~以柠檬皮装饰
+伏特加酸|rocks|#e8e0b8|lemon|伏特加:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+水果伏特加|highball|#f0c060|fruit|伏特加:45ml~时令水果:适量~苏打水:120ml|杯中放入水果块轻压~加满冰倒入伏特加~注入苏打水，放水果装饰
+白俄罗斯马天尼|martini|#d8c8b0|none|伏特加:30ml~咖啡利口酒:20ml~淡奶油:20ml|材料加冰摇匀~滤入冰镇马天尼杯~表面撒可可粉
+墨西哥骡子|copper|#d8e0a0|lime|龙舌兰:45ml~姜汁啤酒:100ml~青柠汁:15ml|铜杯加满冰~倒入龙舌兰与青柠汁~注入姜汁啤酒~放青柠角
+墨西哥辣椒玛格丽特|coupe|#e8d080|lime|龙舌兰:45ml~君度:20ml~青柠汁:20ml~辣椒片:少许|杯口蘸辣椒盐~材料加冰摇匀~滤入杯中~以青柠片装饰
+血橙玛格丽特|coupe|#e8603a|lime|龙舌兰:45ml~君度:20ml~血橙汁:30ml~青柠汁:15ml|材料加冰摇匀~滤入杯口蘸盐的碟形杯~以血橙片装饰
+龙舌兰酸|rocks|#e8d8a0|lemon|龙舌兰:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+托米柯林斯|collins|#e8f0c0|lemon|龙舌兰:45ml~柠檬汁:25ml~糖浆:15ml~苏打水:适量|柯林斯杯加满冰~倒入龙舌兰、柠檬汁与糖浆~注入苏打水~以柠檬片装饰
+葡萄柚帕洛玛|highball|#f08a8a|lime|龙舌兰:45ml~西柚汁:60ml~苏打水:60ml~青柠汁:10ml|高球杯加冰~倒入龙舌兰、西柚汁与青柠汁~注入苏打水~放西柚片
+牛仔|rocks|#c87a3a|none|波本威士忌:50ml~淡奶油:30ml~糖浆:10ml|摇壶加冰用力摇匀~滤入加冰古典杯~表面撒肉豆蔻粉
+威士忌高球|highball|#d8a860|none|威士忌:45ml~苏打水:120ml|高球杯加满冰~倒入威士忌~注入苏打水~轻搅一次即可
+波本酸|rocks|#e0b870|cherry|波本威士忌:50ml~柠檬汁:25ml~糖浆:15ml|材料加冰摇匀~滤入加冰古典杯~放樱桃与橙片
+蜂蜜威士忌|rocks|#d8a040|lemon|威士忌:50ml~蜂蜜糖浆:20ml~柠檬汁:20ml|材料加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+肉桂威士忌苹果酒|copper|#c8783a|none|威士忌:45ml~热苹果酒:120ml~肉桂糖浆:10ml|杯中倒入威士忌与肉桂糖浆~注入热苹果酒~放肉桂棒
+威士忌可乐|highball|#6b3a1a|lemon|威士忌:45ml~可乐:120ml~柠檬汁:10ml|高球杯加满冰~倒入威士忌~注入可乐~挤柠檬汁，放柠檬片
+老广场|rocks|#d9a04a|orange,cherry|黑麦威士忌:30ml~干邑:30ml~本笃会利口酒:10ml~苦精:2滴|材料加冰搅匀~滤入加冰古典杯~以橙皮与樱桃装饰
+林奇堡柠檬水|highball|#e8c860|lemon|威士忌:45ml~柠檬汁:30ml~糖浆:15ml~苏打水:60ml|高球杯加冰~倒入威士忌、柠檬汁与糖浆~注入苏打水~以柠檬片装饰
+镀金时代|rocks|#c88a3a|orange|波本威士忌:45ml~阿玛罗:15ml~姜糖浆:10ml~青柠汁:15ml|材料加冰摇匀~滤入加冰古典杯~以橙皮装饰
+桃子朱利普|rocks|#f0c08a|mint|波本威士忌:60ml~白桃泥:30ml~薄荷叶:10片~糖浆:10ml|薄荷与糖浆轻压~加碎冰与波本、桃泥搅拌~堆满碎冰，插薄荷枝
+爱尔兰威士忌热饮|copper|#b8783a|none|爱尔兰威士忌:45ml~热水:120ml~蜂蜜:2勺~柠檬汁:15ml|杯中放入蜂蜜与柠檬汁~注入热水搅匀~倒入威士忌~趁热饮用
+苏格兰酸|rocks|#e0c890|lemon|苏格兰威士忌:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+罗伯罗伊|martini|#b83030|cherry|苏格兰威士忌:45ml~甜味美思:25ml~苦精:2滴|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+教母|rocks|#c89050|none|伏特加:50ml~杏仁利口酒:20ml|古典杯加大冰块~倒入伏特加~倒入杏仁利口酒~轻搅
+法国连接|rocks|#c8a050|none|干邑白兰地:35ml~杏仁利口酒:35ml|古典杯加大冰块~倒入干邑~倒入杏仁利口酒~轻搅
+马颈|highball|#e8c060|lemon|干邑白兰地:45ml~姜汁汽水:120ml~苦精:2滴|高球杯加冰~倒入干邑与苦精~注入姜汁汽水~放一长条柠檬皮
+白兰地酸|rocks|#e0b070|lemon|干邑白兰地:50ml~柠檬汁:25ml~糖浆:15ml~蛋白:1个|干摇后加冰摇匀~滤入加冰古典杯~以柠檬片装饰
+杏子酸|rocks|#f0b060|fruit|干邑白兰地:40ml~杏子利口酒:20ml~柠檬汁:20ml|材料加冰摇匀~滤入加冰古典杯~以杏子片装饰
+香槟鸡尾酒|flute|#f0d890|lemon|香槟:120ml~方糖:1块~苦精:3滴~柠檬皮:1片|笛形杯中放方糖滴苦精~倒入少许香槟溶解~注满冰镇香槟~挤柠檬皮油
+死亡之吻|coupe|#f0e0a0|cherry|干邑白兰地:30ml~黄查特酒:30ml~蛋白:1个|材料干摇后加冰摇匀~滤入冰镇碟形杯~放樱桃
+蓝库拉索|coupe|#4ab8e8|lemon|蓝橙力娇酒:40ml~伏特加:20ml~柠檬汁:20ml~糖浆:10ml|材料加冰摇匀~滤入冰镇碟形杯~以柠檬皮装饰
+西班牙咖啡|copper|#8b5a2b|none|白朗姆:45ml~热咖啡:120ml~糖浆:15ml~奶油:适量|杯中倒入朗姆与糖浆~注入热咖啡搅匀~淋上奶油~表面撒可可粉
+桑布卡咖啡|copper|#5a3218|coffee|桑布卡:30ml~热咖啡:120ml~糖:1勺|杯中放入糖~注入热咖啡搅拌~倒入桑布卡~趁热饮用
+苦艾酒滴|shot|#c8e0a0|none|苦艾酒:30ml~冰水:适量~方糖:1块|杯中倒入苦艾酒~方糖置于苦艾勺上~冰水滴过方糖落入杯中
+阿佩罗酸|coupe|#f0842c|orange|阿佩罗:50ml~柠檬汁:20ml~糖浆:15ml~苏打水:适量|材料加冰摇匀~滤入冰镇碟形杯~注入苏打水~以橙片装饰
+阿佩罗汤力|highball|#f08a3a|orange|阿佩罗:45ml~汤力水:120ml~橙片:1片|高球杯加满冰~倒入阿佩罗~注入汤力水~轻搅，放橙片
+丽叶特|coupe|#e8c8b0|none|金酒:30ml~开胃酒:30ml~樱桃利口酒:10ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇碟形杯~以柠檬皮装饰
+白兰地亚历山大|martini|#c8a878|none|干邑白兰地:40ml~可可利口酒:20ml~淡奶油:20ml|材料加冰摇匀~滤入冰镇马天尼杯~表面撒肉桂粉
+香蕉亚历山大|coupe|#f0e0a0|fruit|干邑白兰地:30ml~香蕉利口酒:20ml~淡奶油:20ml|材料加冰摇匀~滤入冰镇碟形杯~以香蕉片装饰
+金巴利金汤力|highball|#e05a3a|orange|金巴利:30ml~金酒:30ml~汤力水:100ml|高球杯加满冰~倒入金巴利与金酒~注入汤力水~放橙片
+美国佬气泡|flute|#e05a3a|none|金巴利:30ml~甜味美思:30ml~普罗塞克:60ml|笛形杯加冰~倒入金巴利与味美思~注入起泡酒~轻搅
+尼格罗尼气泡|flute|#c84a3a|orange|金酒:20ml~金巴利:20ml~甜味美思:20ml~普罗塞克:60ml|杯中加冰倒入前三样~注入起泡酒~以橙皮装饰
+索雷拉|coupe|#f0b060|orange|金酒:30ml~阿佩罗:20ml~西柚汁:30ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇碟形杯~以橙皮装饰
+东方|martini|#c83a4a|lime|黑麦威士忌:45ml~君度:20ml~青柠汁:20ml~石榴糖浆:5ml|材料加冰摇匀~滤入冰镇马天尼杯~以青柠皮装饰
+红钩|martini|#c87a5a|cherry|黑麦威士忌:45ml~蒙特内罗:20ml~樱桃利口酒:10ml|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+布鲁克林|martini|#b83040|cherry|黑麦威士忌:45ml~干味美思:15ml~樱桃利口酒:15ml~阿玛罗:5ml|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+绿点|martini|#c8a050|cherry|黑麦威士忌:45ml~黄查特酒:20ml~甜味美思:20ml~苦精:2滴|材料加冰搅匀~滤入冰镇马天尼杯~以橙皮装饰
+本森赫斯特|martini|#c85a4a|cherry|波本威士忌:45ml~雪莉酒:20ml~黑樱桃利口酒:10ml|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+便士|martini|#c8704a|cherry|波本威士忌:45ml~阿玛罗:20ml~柠檬汁:15ml~糖浆:10ml|材料加冰摇匀~滤入冰镇马天尼杯~以柠檬皮装饰
+蒂珀雷里|martini|#c8b878|cherry|爱尔兰威士忌:45ml~甜味美思:20ml~绿查特酒:10ml~苦精:2滴|材料加冰搅匀~滤入冰镇马天尼杯~放樱桃
+三叶草|highball|#c8e0a0|mint|爱尔兰威士忌:45ml~青柠汁:20ml~薄荷叶:6片~苏打水:适量|薄荷与材料轻压摇匀~滤入加冰高球杯~注入苏打水~以薄荷装饰
+罗勒碎|highball|#a8d870|mint|金酒:45ml~罗勒叶:8片~青柠汁:20ml~糖浆:10ml~苏打水:适量|罗勒轻压与材料摇匀~滤入加冰高球杯~注入苏打水~以罗勒装饰
+肯塔基骡子|copper|#e0d8a0|lime|波本威士忌:45ml~姜汁啤酒:100ml~青柠汁:15ml|铜杯加满冰~倒入波本与青柠汁~注入姜汁啤酒~放青柠角
+姜汁啤酒高球|highball|#e8d8a0|lime|金酒:45ml~姜汁啤酒:120ml~青柠角:1个|高球杯加满冰~倒入金酒~注入姜汁啤酒~挤青柠角放入
+姜汁汽水高球|highball|#e8e8c0|lime|伏特加:45ml~姜汁汽水:120ml~青柠汁:10ml|高球杯加满冰~倒入伏特加~注入姜汁汽水~挤青柠汁
+柠檬苏打|highball|#f0f0c0|lemon|柠檬汁:30ml~糖浆:20ml~苏打水:120ml|高球杯加满冰~倒入柠檬汁与糖浆~注入苏打水搅匀~放柠檬片
+青柠苏打|highball|#e0f0c0|lime|青柠汁:30ml~糖浆:20ml~苏打水:120ml|高球杯加满冰~倒入青柠汁与糖浆~注入苏打水搅匀~放青柠片
+处女莫吉托|highball|#d8f0b0|mint,lime|青柠汁:25ml~糖浆:20ml~薄荷叶:10片~苏打水:150ml|薄荷与青柠汁糖浆入杯轻压~加满碎冰~注入苏打水搅匀~以薄荷枝装饰
+处女玛格丽特|coupe|#e8f0a8|lime|青柠汁:30ml~橙汁:40ml~糖浆:15ml~苏打水:60ml|材料加冰摇匀~滤入杯口蘸盐的碟形杯~放青柠片
+处女椰林|hurricane|#f4f0dc|pineapple|菠萝汁:100ml~椰奶:40ml~青柠汁:15ml~糖浆:10ml|材料加冰摇匀~滤入装满碎冰的飓风杯~以菠萝叶装饰
+蔓越莓气泡|highball|#e05a7a|berry|蔓越莓汁:80ml~青柠汁:15ml~苏打水:80ml|高球杯加冰~倒入果汁与青柠汁~注入苏打水~放几颗蔓越莓
+蜜桃冰茶|highball|#f0b878|peach|白桃泥:40ml~冰红茶:120ml~柠檬汁:10ml|高球杯加满冰~倒入桃泥与柠檬汁~注入冰红茶搅匀~放桃片
+冰红茶|highball|#c8803a|lemon|冰红茶:150ml~柠檬汁:15ml~糖浆:10ml|高球杯加满冰~注入冰红茶~加入柠檬汁与糖浆~放柠檬片
+西柚苏打|highball|#f0a0a0|none|西柚汁:90ml~苏打水:80ml~糖浆:10ml|高球杯加冰~倒入西柚汁与糖浆~注入苏打水~放西柚片
+菠萝椰子水|highball|#f0e8c0|pineapple|菠萝汁:90ml~椰子水:60ml~青柠汁:10ml|高球杯加满冰~倒入所有材料~轻搅~以菠萝叶装饰
+西瓜气泡|highball|#f06a7a|watermelon|西瓜汁:120ml~青柠汁:15ml~苏打水:60ml|高球杯加冰~倒入西瓜汁与青柠汁~注入苏打水~放西瓜块
+蓝莓柠檬水|highball|#8a7ac8|berry|蓝莓:10颗~柠檬汁:30ml~糖浆:20ml~苏打水:120ml|蓝莓压碎入杯~加冰倒入柠檬汁与糖浆~注入苏打水搅匀
+薄荷柠檬水|highball|#c8f0a0|mint,lemon|柠檬汁:30ml~薄荷叶:8片~糖浆:20ml~苏打水:120ml|薄荷与糖浆轻压~加冰倒入柠檬汁~注入苏打水搅匀~以薄荷装饰
+玫瑰柠檬水|highball|#f0b0c8|none|玫瑰糖浆:25ml~柠檬汁:25ml~苏打水:120ml|高球杯加满冰~倒入玫瑰糖浆与柠檬汁~注入苏打水~放玫瑰花瓣
+黄瓜气泡|highball|#d8f0c0|cucumber|黄瓜片:5片~青柠汁:20ml~糖浆:15ml~苏打水:120ml|黄瓜轻压入杯~加冰倒入青柠汁与糖浆~注入苏打水~放黄瓜片
+橙汁气泡|highball|#f0b04a|orange|橙汁:120ml~苏打水:60ml~柠檬汁:10ml|高球杯加满冰~倒入橙汁与柠檬汁~注入苏打水~放橙片
+番茄汁|highball|#c83030|celery|番茄汁:150ml~柠檬汁:15ml~盐胡椒:适量~辣酱:2滴|高球杯加冰~倒入番茄汁~加入调味料搅匀~放芹菜杆
+牛奶宾治|rocks|#f4ecd8|none|牛奶:120ml~淡奶油:30ml~糖浆:15ml~香草精:2滴|摇壶加冰倒入所有材料~轻轻摇匀~滤入加冰古典杯~撒肉豆蔻粉
+咖啡冰沙|rocks|#6b4020|coffee|浓缩咖啡:60ml~牛奶:80ml~糖浆:15ml~冰块:1杯|将所有材料倒入搅拌机~高速打至顺滑~倒入杯中~以咖啡豆装饰
+抹茶拿铁鸡尾酒|rocks|#8ac860|none|抹茶粉:2g~牛奶:120ml~糖浆:15ml~伏特加:30ml|抹茶与少量牛奶调开~加冰倒入剩余牛奶与伏特加~搅匀
+柚子气泡|highball|#f0e08a|none|柚子汁:40ml~蜂蜜:15ml~苏打水:120ml|高球杯加满冰~倒入柚子汁与蜂蜜~注入苏打水搅匀~放柚子皮
+荔枝马天尼|martini|#f0e8d0|fruit|伏特加:45ml~荔枝利口酒:20ml~荔枝汁:30ml|材料加冰摇匀~滤入冰镇马天尼杯~放一颗荔枝
+水蜜桃气泡|flute|#f0b890|peach|白桃泥:40ml~苏打水:100ml~柠檬汁:10ml|笛形杯加冰~倒入桃泥与柠檬汁~注入苏打水~放桃片
+桂花酒|rocks|#f0d080|none|桂花酒:60ml~苏打水:60ml~蜂蜜:10ml|古典杯加冰~倒入桂花酒与蜂蜜~注入苏打水搅匀~撒桂花
+梅子酒|rocks|#c8607a|none|梅子酒:60ml~苏打水:80ml~冰块:适量|古典杯加满冰~倒入梅子酒~注入苏打水~放一颗梅子
+清酒马天尼|martini|#f4f0e0|none|清酒:50ml~干味美思:15ml~青柠皮:1片|材料加冰搅匀~滤入冰镇马天尼杯~挤青柠皮油
+柚子清酒|coupe|#f0e8b0|none|清酒:50ml~柚子汁:25ml~糖浆:10ml|材料加冰摇匀~滤入冰镇碟形杯~放柚子皮
+烧酒高球|highball|#e8e8d8|lime|烧酒:45ml~苏打水:120ml~青柠角:1个|高球杯加满冰~倒入烧酒~注入苏打水~挤青柠角放入
+抹茶清酒|coupe|#a8d880|none|清酒:50ml~抹茶:2g~糖浆:15ml|抹茶用少量清酒调开~加入剩余清酒与糖浆摇匀~滤入冰镇碟形杯
+蜂蜜柚子酒|coupe|#f0d860|none|柚子酒:50ml~蜂蜜:10ml~苏打水:60ml|杯中加冰~倒入柚子酒与蜂蜜~注入苏打水搅匀
+蓝莓气泡|highball|#9a7ad8|berry|蓝莓:12颗~柠檬汁:20ml~糖浆:15ml~苏打水:120ml|蓝莓压碎入杯~加冰倒入柠檬汁与糖浆~注入苏打水
+草莓气泡|highball|#f06a7a|berry|草莓:4颗~柠檬汁:20ml~糖浆:15ml~苏打水:120ml|草莓压碎入杯~加冰倒入柠檬汁与糖浆~注入苏打水
+荔枝气泡|highball|#f0e8d0|fruit|荔枝汁:60ml~青柠汁:15ml~苏打水:100ml|高球杯加冰~倒入荔枝汁与青柠汁~注入苏打水~放荔枝
+百香果气泡|highball|#f0c040|fruit|百香果:2个~蜂蜜:15ml~苏打水:120ml|百香果肉挖入杯中~加冰倒入蜂蜜~注入苏打水搅匀
+芒果拉西鸡尾酒|rocks|#f0c060|fruit|芒果泥:60ml~酸奶:60ml~伏特加:30ml~蜂蜜:10ml|材料加冰摇匀~滤入加冰古典杯~以芒果片装饰
+姜味蜂蜜柠檬|highball|#e8c860|lemon|姜汁:20ml~蜂蜜:20ml~柠檬汁:25ml~苏打水:120ml|高球杯加冰~倒入姜汁、蜂蜜与柠檬汁~注入苏打水搅匀
+香草奶昔鸡尾酒|rocks|#f4ecd8|none|香草冰淇淋:1球~牛奶:80ml~伏特加:30ml~香草精:2滴|材料倒入搅拌机打匀~倒入杯中~撒香草籽
+薄荷巧克力鸡尾酒|rocks|#5a3a20|chocolate|巧克力利口酒:30ml~薄荷利口酒:15ml~牛奶:80ml~可可粉:适量|材料加冰摇匀~滤入加冰古典杯~表面撒可可粉
+焦糖苹果酒|copper|#d89a3a|apple|焦糖利口酒:30ml~苹果酒:120ml~肉桂粉:适量|杯中倒入焦糖利口酒~注入温苹果酒~搅拌后撒肉桂粉
+肉桂热红酒|copper|#8b2a3a|orange|红酒:150ml~肉桂棒:1根~丁香:3粒~橙片:2片~蜂蜜:15ml|红酒与香料小火加热~加入蜂蜜搅拌~倒入杯中~放橙片
+热红酒|copper|#8b2a3a|orange|红酒:150ml~橙汁:30ml~肉桂:1根~糖:20g|红酒与橙汁加热~加入糖与肉桂~小火煮五分钟~滤入杯中
+白色桑格利亚|rocks|#f0e8c0|fruit|白葡萄酒:120ml~白桃汁:40ml~苏打水:40ml~水果块:适量|大杯中放入水果与冰~倒入白葡萄酒与桃汁~注入苏打水搅匀
+红色桑格利亚|rocks|#a8303a|orange|红葡萄酒:120ml~橙汁:40ml~白兰地:20ml~水果块:适量|大杯放入水果与冰~倒入红酒、橙汁与白兰地~搅匀
+桑格利亚气泡|highball|#c84a5a|fruit|红葡萄酒:80ml~橙汁:40ml~苏打水:60ml~水果块:适量|高球杯加冰与水果~倒入红酒与橙汁~注入苏打水
+桃子桑格利亚|rocks|#f0c090|peach|白葡萄酒:100ml~白桃泥:40ml~苏打水:40ml|杯中放入桃片与冰~倒入白葡萄酒与桃泥~注入苏打水
+香槟桃子|flute|#f0b890|peach|白桃泥:30ml~香槟:100ml|桃泥倒入冰镇笛形杯~缓慢注入香槟~放桃片
+香槟草莓|flute|#f06a7a|berry|草莓泥:30ml~香槟:100ml|草莓泥倒入冰镇笛形杯~缓慢注入香槟~放草莓片
+玫瑰香槟|flute|#f0c0d0|none|玫瑰糖浆:15ml~香槟:110ml~玫瑰花瓣:少许|糖浆倒入冰镇笛形杯~缓慢注入香槟~撒玫瑰花瓣
+洛神花气泡|highball|#c8304a|none|洛神花糖浆:30ml~青柠汁:15ml~苏打水:120ml|高球杯加冰~倒入糖浆与青柠汁~注入苏打水~放一朵洛神花
+紫罗兰金酒|coupe|#b08ad8|none|金酒:45ml~紫罗兰利口酒:15ml~柠檬汁:20ml|材料加冰摇匀~滤入冰镇碟形杯~以柠檬皮装饰
+薰衣草金汤力|highball|#c8b0e0|lime|金酒:45ml~薰衣草糖浆:15ml~汤力水:120ml|高球杯加满冰~倒入金酒与糖浆~注入汤力水~放薰衣草
+接骨木花金汤力|highball|#e8f0c8|lime|金酒:45ml~接骨木花利口酒:15ml~汤力水:110ml|高球杯加满冰~倒入金酒与利口酒~注入汤力水~放青柠片
+黄瓜青柠苏打|highball|#d8f0c0|cucumber|黄瓜汁:50ml~青柠汁:25ml~糖浆:15ml~苏打水:100ml|高球杯加冰~倒入黄瓜汁、青柠汁与糖浆~注入苏打水~放黄瓜片
+热带水果潘趣|hurricane|#f0a040|pineapple|菠萝汁:60ml~橙汁:40ml~芒果汁:40ml~青柠汁:15ml~苏打水:60ml|大杯加冰~倒入所有果汁~注入苏打水搅匀~放水果块
+百香果马天尼|martini|#f0c040|fruit|伏特加:45ml~百香果糖浆:25ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~放半颗百香果
+椰香马天尼|martini|#f4f0e0|none|伏特加:40ml~椰子利口酒:25ml~椰奶:20ml|材料加冰摇匀~滤入冰镇马天尼杯~杯口蘸椰丝
+橙香马天尼|martini|#f0a040|orange|伏特加:45ml~橙味利口酒:20ml~橙汁:20ml|材料加冰摇匀~滤入冰镇马天尼杯~以橙皮装饰
+蔓越莓马天尼|martini|#e0406a|berry|伏特加:45ml~蔓越莓汁:40ml~青柠汁:15ml~糖浆:10ml|材料加冰摇匀~滤入冰镇马天尼杯~放几颗蔓越莓
+西瓜马天尼|martini|#f06a7a|watermelon|伏特加:45ml~西瓜汁:60ml~青柠汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~放西瓜块
+黄瓜马天尼|martini|#d8f0c0|cucumber|伏特加:50ml~黄瓜汁:30ml~干味美思:10ml|材料加冰搅匀~滤入冰镇马天尼杯~放黄瓜片
+蓝莓马天尼|martini|#8a6ac8|berry|伏特加:45ml~蓝莓汁:40ml~青柠汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~放蓝莓
+草莓马天尼|martini|#f06a7a|berry|伏特加:45ml~草莓泥:40ml~青柠汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~放草莓
+玫瑰马天尼|martini|#f0b0c8|none|伏特加:45ml~玫瑰糖浆:20ml~柠檬汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~撒玫瑰花瓣
+焦糖马天尼|martini|#c8903a|none|伏特加:40ml~焦糖利口酒:25ml~淡奶油:15ml|材料加冰摇匀~滤入冰镇马天尼杯~表面淋焦糖
+青苹果马天尼|martini|#a8d860|apple|伏特加:45ml~青苹果利口酒:25ml~青柠汁:15ml|材料加冰摇匀~滤入冰镇马天尼杯~放青苹果片
+蓝色玛格丽特|coupe|#4ab8e8|lime|龙舌兰:45ml~蓝橙力娇酒:20ml~青柠汁:20ml|杯口蘸盐~材料加冰摇匀~滤入杯中~放青柠片
+草莓玛格丽特|coupe|#f06a7a|berry|龙舌兰:45ml~草莓泥:40ml~青柠汁:20ml|杯口蘸糖~材料加冰摇匀~滤入杯中~放草莓
+西瓜玛格丽特|coupe|#f06a7a|watermelon|龙舌兰:45ml~西瓜汁:50ml~青柠汁:20ml|杯口蘸盐~材料加冰摇匀~滤入杯中~放西瓜块
+芒果玛格丽特|coupe|#f0b040|fruit|龙舌兰:45ml~芒果泥:40ml~青柠汁:20ml|杯口蘸盐~材料加冰摇匀~滤入杯中~放芒果片
+百香果玛格丽特|coupe|#f0c040|fruit|龙舌兰:45ml~百香果糖浆:25ml~青柠汁:20ml|杯口蘸盐~材料加冰摇匀~滤入杯中~放半颗百香果
+`;
+
+/* ============================================================
+   2. 日常平替规则
+   ============================================================ */
+const SWAPS = [
+  {match:/君度|橙味利口酒|Triple Sec/i, name:'橙汁', alt:'原配方用君度橙酒', amountNote:'+少许糖浆'},
+  {match:/干味美思/, name:'白葡萄酒', alt:'原配方用干味美思'},
+  {match:/甜味美思/, name:'红葡萄酒', alt:'原配方用甜味美思', amountNote:'+少许糖'},
+  {match:/味美思/, name:'葡萄酒', alt:'原配方用味美思', amountNote:'+少许糖'},
+  {match:/安高天娜|苦精|橙味苦精/, name:'橙皮屑', alt:'原配方用苦精', amountNote:'少许'},
+  {match:/金巴利/, name:'橙汁', alt:'原配方用金巴利', amountNote:'+少许西柚汁'},
+  {match:/阿佩罗/, name:'橙汁', alt:'原配方用阿佩罗'},
+  {match:/利莱白/, name:'白葡萄酒', alt:'原配方用利莱白'},
+  {match:/黑樱桃利口酒|樱桃利口酒/, name:'樱桃罐头汁', alt:'原配方用樱桃利口酒'},
+  {match:/紫罗兰利口酒/, name:'葡萄汁', alt:'原配方用紫罗兰利口酒'},
+  {match:/绿查特|黄查特|查特酒/, name:'蜂蜜水', alt:'原配方用查特酒', amountNote:'+少许香草精'},
+  {match:/本笃会/, name:'蜂蜜水', alt:'原配方用本笃会利口酒', amountNote:'+少许肉桂粉'},
+  {match:/蒙特内罗/, name:'蜂蜜水', alt:'原配方用蒙特内罗', amountNote:'+少许八角水'},
+  {match:/阿玛罗/, name:'橙皮+红糖水', alt:'原配方用阿玛罗'},
+  {match:/香博利口酒|香博/, name:'覆盆子果酱水', alt:'原配方用香博利口酒'},
+  {match:/桑布卡/, name:'白酒', alt:'原配方用桑布卡', amountNote:'+一颗八角'},
+  {match:/皮斯科/, name:'白兰地', alt:'原配方用皮斯科酒'},
+  {match:/梅斯卡尔/, name:'威士忌', alt:'原配方用梅斯卡尔'},
+  {match:/老汤姆金酒/, name:'金酒', alt:'原配方用老汤姆金酒', amountNote:'+少许糖浆'},
+  {match:/黑麦威士忌/, name:'威士忌', alt:'原配方用黑麦威士忌'},
+  {match:/干邑白兰地|干邑/, name:'白兰地', alt:'原配方用干邑白兰地'},
+  {match:/苹果杰克/, name:'苹果汁+伏特加', alt:'原配方用苹果杰克'},
+  {match:/苦艾酒/, name:'白酒', alt:'原配方用苦艾酒', amountNote:'+少许八角'},
+  {match:/橙花水/, name:'橙皮屑', alt:'原配方用橙花水', amountNote:'少许'},
+  {match:/伍斯特酱/, name:'酱油+醋', alt:'原配方用伍斯特酱', amountNote:'少许'},
+  {match:/咖啡利口酒/, name:'浓咖啡+糖', alt:'原配方用咖啡利口酒'},
+  {match:/可可利口酒/, name:'巧克力酱+牛奶', alt:'原配方用可可利口酒'},
+  {match:/百利甜酒/, name:'牛奶+咖啡+糖', alt:'原配方用百利甜酒'},
+  {match:/杏仁利口酒/, name:'杏仁露', alt:'原配方用杏仁利口酒'},
+  {match:/桃子利口酒/, name:'桃子罐头汁', alt:'原配方用桃子利口酒'},
+  {match:/蓝橙力娇酒|蓝橙/, name:'橙汁', alt:'原配方用蓝橙力娇酒', amountNote:'+少许蓝色食用色素'},
+  {match:/蜜桃泥|白桃泥/, name:'桃子罐头泥', alt:'原配方用桃泥'},
+  {match:/荔枝利口酒/, name:'荔枝罐头汁', alt:'原配方用荔枝利口酒'},
+  {match:/柚子酒/, name:'柚子茶冲水', alt:'原配方用柚子酒'},
+  {match:/梅子酒/, name:'话梅泡水', alt:'原配方用梅子酒'},
+  {match:/桂花酒/, name:'桂花糖浆+白酒', alt:'原配方用桂花酒'},
+  {match:/清酒/, name:'米酒', alt:'原配方用清酒'},
+  {match:/烧酒/, name:'白酒', alt:'原配方用烧酒'},
+  {match:/黑加仑利口酒/, name:'黑加仑果汁', alt:'原配方用黑加仑利口酒'},
+  {match:/汤力水/, name:'雪碧', alt:'原配方用汤力水', amountNote:'+少许盐'},
+  {match:/姜汁啤酒/, name:'姜汁汽水', alt:'原配方用姜汁啤酒'},
+  {match:/西柚汁/, name:'柚子茶冲水', alt:'原配方用西柚汁'},
+  {match:/蔓越莓汁/, name:'葡萄汁', alt:'原配方用蔓越莓汁', amountNote:'+少许柠檬汁'},
+  {match:/石榴糖浆/, name:'红糖水', alt:'原配方用石榴糖浆'},
+  {match:/杏仁糖浆/, name:'杏仁露', alt:'原配方用杏仁糖浆'},
+  {match:/蜂蜜姜糖浆/, name:'蜂蜜+姜汁', alt:'原配方用蜂蜜姜糖浆'},
+  {match:/肉桂糖浆/, name:'糖浆+肉桂粉', alt:'原配方用肉桂糖浆'},
+  {match:/玫瑰糖浆/, name:'糖浆+玫瑰花瓣', alt:'原配方用玫瑰糖浆'},
+  {match:/薰衣草糖浆/, name:'糖浆+薰衣草', alt:'原配方用薰衣草糖浆'},
+  {match:/接骨木花利口酒|接骨木花/, name:'蜂蜜水+柠檬', alt:'原配方用接骨木花利口酒'},
+  {match:/柚子汁/, name:'柚子茶冲水', alt:'原配方用柚子汁'},
+  {match:/椰子水/, name:'椰汁', alt:'原配方用椰子水'},
+  {match:/椰奶/, name:'椰汁', alt:'原配方用椰奶'},
+  {match:/淡奶油/, name:'牛奶', alt:'原配方用淡奶油', amountNote:'+少许黄油'},
+  {match:/浓缩咖啡/, name:'速溶咖啡冲浓', alt:'原配方用浓缩咖啡'},
+  {match:/洛神花糖浆/, name:'红糖水', alt:'原配方用洛神花糖浆', amountNote:'+少许柠檬汁'},
+  {match:/迷迭香/, name:'薄荷叶', alt:'原配方用迷迭香'},
+  {match:/罗勒叶/, name:'薄荷叶', alt:'原配方用罗勒叶'},
+  {match:/龙舌兰/, name:'龙舌兰', alt:'可用伏特加+少许青柠汁代替'},
+];
+
+function applySwaps(ingredients){
+  return ingredients.map(ing=>{
+    for(const s of SWAPS){
+      if(s.match.test(ing.name)){
+        let newName = s.name;
+        let alt = s.alt || `原配方用${ing.name}`;
+        if(s.amountNote) alt += `（${s.amountNote}）`;
+        return {...ing, name:newName, alt};
+      }
+    }
+    return ing;
+  });
+}
+
+/* ============================================================
+   3. 解析酒谱
+   ============================================================ */
+const COCKTAILS = RAW.trim().split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+  const p = line.split('|');
+  const name = p[0].trim();
+  const glass = (p[1]||'rocks').trim();
+  const color = (p[2]||'#e8d8b0').trim();
+  const deco = (p[3]||'').split(',').map(s=>s.trim()).filter(Boolean);
+  let ingredients = (p[4]||'').split('~').filter(Boolean).map(s=>{
+    const i = s.indexOf(':');
+    if(i<0) return {name:s.trim(), amount:''};
+    return {name:s.slice(0,i).trim(), amount:s.slice(i+1).trim()};
+  });
+  ingredients = applySwaps(ingredients);
+  const steps = (p[5]||'').split('~').filter(Boolean).map(s=>s.trim());
+  return {name, glass, color, deco, ingredients, steps};
+});
+
+/* ============================================================
+   4. 卡通插图生成
+   ============================================================ */
+const GLASSES = {
+  martini:{
+    body:'M62 76 L138 76 L100 136 Z',
+    liquid:'M67 84 L133 84 L100 136 Z',
+    extras:['M100 136 L100 168','M80 172 L120 172'],
+    rim:[60,76]
+  },
+  coupe:{
+    body:'M60 78 Q100 130 140 78 Q100 88 60 78 Z',
+    liquid:'M67 90 Q100 124 133 90 Q100 99 67 90 Z',
+    extras:['M100 118 L100 166','M80 170 L120 170'],
+    rim:[140,78]
+  },
+  rocks:{
+    body:'M68 82 L68 152 Q68 160 76 160 L124 160 Q132 160 132 152 L132 82 Z',
+    liquid:'M71 104 L129 104 L129 151 Q129 157 123 157 L77 157 Q71 157 71 151 Z',
+    extras:[],
+    rim:[132,80]
+  },
+  highball:{
+    body:'M72 56 L72 166 Q72 172 78 172 L122 172 Q128 172 128 166 L128 56 Z',
+    liquid:'M75 82 L125 82 L125 165 Q125 169 121 169 L79 169 Q75 169 75 165 Z',
+    extras:[],
+    rim:[128,56]
+  },
+  collins:{
+    body:'M78 48 L78 170 Q78 176 84 176 L116 176 Q122 176 122 170 L122 48 Z',
+    liquid:'M81 76 L119 76 L119 169 Q119 173 115 173 L85 173 Q81 173 81 169 Z',
+    extras:[],
+    rim:[122,48]
+  },
+  hurricane:{
+    body:'M68 60 C70 110 86 122 88 166 L112 166 C114 122 130 110 132 60 Z',
+    liquid:'M71 84 C73 114 88 126 90 163 L110 163 C112 126 127 114 129 84 Z',
+    extras:[],
+    rim:[132,60]
+  },
+  margarita:{
+    body:'M58 74 Q100 80 142 74 Q140 112 100 134 Q60 112 58 74 Z',
+    liquid:'M63 86 Q100 92 137 86 Q135 114 100 129 Q65 114 63 86 Z',
+    extras:['M100 132 L100 166','M80 170 L120 170'],
+    rim:[142,74]
+  },
+  flute:{
+    body:'M86 52 Q80 96 88 128 Q94 144 100 144 Q106 144 112 128 Q120 96 114 52 Z',
+    liquid:'M89 66 Q85 100 91 126 Q96 138 100 138 Q104 138 109 126 Q115 100 111 66 Z',
+    extras:['M100 144 L100 168','M84 172 L116 172'],
+    rim:[114,52]
+  },
+  tiki:{
+    body:'M66 76 L66 140 Q66 168 100 168 Q134 168 134 140 L134 76 Z',
+    liquid:'M70 96 L70 140 Q70 164 100 164 Q130 164 130 140 L130 96 Z',
+    extras:[],
+    rim:[134,76]
+  },
+  shot:{
+    body:'M80 108 L80 152 Q80 158 86 158 L114 158 Q120 158 120 152 L120 108 Z',
+    liquid:'M83 120 L83 151 Q83 155 86 155 L114 155 Q117 155 117 151 L117 120 Z',
+    extras:[],
+    rim:[120,108]
+  },
+  copper:{
+    body:'M70 84 L70 156 Q70 164 78 164 L122 164 Q130 164 130 156 L130 84 Z',
+    liquid:'M73 100 L73 155 Q73 161 78 161 L122 161 Q127 161 127 155 L127 100 Z',
+    extras:['M130 100 Q148 104 148 122 Q148 140 130 144'],
+    rim:[130,84]
+  },
+  wine:{
+    body:'M72 70 Q74 116 100 124 Q126 116 128 70 Z',
+    liquid:'M77 90 Q79 114 100 120 Q121 114 123 90 Z',
+    extras:['M100 124 L100 166','M80 170 L120 170'],
+    rim:[128,70]
+  }
+};
+
+function shade(hex, amt){
+  let c = hex.replace('#','');
+  if(c.length===3) c = c.split('').map(x=>x+x).join('');
+  let r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  r = Math.max(0,Math.min(255, Math.round(r + amt)));
+  g = Math.max(0,Math.min(255, Math.round(g + amt)));
+  b = Math.max(0,Math.min(255, Math.round(b + amt)));
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+function drawDeco(type){
+  switch(type){
+    case 'lime':
+      return `<g transform="rotate(-14)">
+        <circle cx="0" cy="0" r="15" fill="#b8e05a" stroke="#4a3f2f" stroke-width="2.6"/>
+        <circle cx="0" cy="0" r="10" fill="#d8f08a" stroke="#7aa838" stroke-width="1.6"/>
+        <path d="M0 -10 L0 10 M-9 -5 L9 5 M-9 5 L9 -5" stroke="#7aa838" stroke-width="1.4" fill="none"/>
+      </g>`;
+    case 'lemon':
+      return `<g transform="rotate(12)">
+        <circle cx="0" cy="0" r="15" fill="#f5d94a" stroke="#4a3f2f" stroke-width="2.6"/>
+        <circle cx="0" cy="0" r="10" fill="#fdf0a0" stroke="#d4b62a" stroke-width="1.6"/>
+        <path d="M0 -10 L0 10 M-9 -5 L9 5 M-9 5 L9 -5" stroke="#d4b62a" stroke-width="1.4" fill="none"/>
+      </g>`;
+    case 'cherry':
+      return `<g>
+        <path d="M0 -16 Q8 -26 16 -30" stroke="#5a7a2a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <circle cx="-4" cy="2" r="10" fill="#d92b3a" stroke="#4a3f2f" stroke-width="2.4"/>
+        <circle cx="12" cy="6" r="9" fill="#e84550" stroke="#4a3f2f" stroke-width="2.4"/>
+        <circle cx="-7" cy="-1" r="3" fill="#ff9aa0" opacity=".8"/>
+      </g>`;
+    case 'mint':
+      return `<g>
+        <path d="M0 14 Q-2 -4 4 -18" stroke="#4a7a2a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="-9" cy="0" rx="9" ry="6" fill="#9ad85a" stroke="#4a3f2f" stroke-width="2" transform="rotate(-28 -9 0)"/>
+        <ellipse cx="10" cy="-8" rx="9" ry="6" fill="#b8e878" stroke="#4a3f2f" stroke-width="2" transform="rotate(24 10 -8)"/>
+        <ellipse cx="-6" cy="-13" rx="8" ry="5.5" fill="#8ecb4a" stroke="#4a3f2f" stroke-width="2" transform="rotate(-16 -6 -13)"/>
+      </g>`;
+    case 'orange':
+      return `<g transform="rotate(-20)">
+        <path d="M-16 8 Q-4 -14 14 -12 Q2 4 -16 8 Z" fill="#f0a030" stroke="#4a3f2f" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M-10 4 Q-2 -6 6 -7" stroke="#d9822a" stroke-width="1.6" fill="none"/>
+      </g>`;
+    case 'olive':
+      return `<g transform="rotate(-18)">
+        <path d="M0 -26 L0 18" stroke="#c8a86a" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="0" cy="6" rx="10" ry="12" fill="#8aa83a" stroke="#4a3f2f" stroke-width="2.4"/>
+        <circle cx="0" cy="4" r="3.2" fill="#c8503a"/>
+      </g>`;
+    case 'pineapple':
+      return `<g>
+        <path d="M-14 -6 Q0 -12 14 -6 L10 12 Q0 20 -10 12 Z" fill="#f0c040" stroke="#4a3f2f" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M-2 -8 Q-10 -26 -2 -30 Q2 -20 2 -8" fill="#7ac04a" stroke="#4a3f2f" stroke-width="2"/>
+        <path d="M2 -8 Q10 -24 18 -24 Q12 -14 6 -8" fill="#9ad85a" stroke="#4a3f2f" stroke-width="2"/>
+        <path d="M-6 0 L4 8 M-6 6 L4 14" stroke="#d9a02a" stroke-width="1.6" fill="none"/>
+      </g>`;
+    case 'cucumber':
+      return `<g transform="rotate(-10)">
+        <circle cx="0" cy="0" r="14" fill="#a8d868" stroke="#4a3f2f" stroke-width="2.6"/>
+        <circle cx="0" cy="0" r="9" fill="#e0f0b0" stroke="#7aa838" stroke-width="1.6"/>
+        <circle cx="-4" cy="-3" r="1.6" fill="#7aa838"/><circle cx="4" cy="2" r="1.6" fill="#7aa838"/>
+      </g>`;
+    case 'salt':
+      return `<g>
+        <path d="M-12 4 L12 4 L9 20 L-9 20 Z" fill="#f4f0e0" stroke="#4a3f2f" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M-8 -6 L8 -6 L12 4 L-12 4 Z" fill="#fffdf5" stroke="#4a3f2f" stroke-width="2.4" stroke-linejoin="round"/>
+        <circle cx="-3" cy="-1" r="1.4" fill="#b8b0a0"/><circle cx="4" cy="0" r="1.4" fill="#b8b0a0"/>
+      </g>`;
+    case 'celery':
+      return `<g transform="rotate(-12)">
+        <path d="M0 20 L0 -16" stroke="#7ab83a" stroke-width="6" stroke-linecap="round"/>
+        <path d="M0 -10 Q-9 -20 -4 -26" stroke="#9ad85a" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M0 -6 Q9 -18 6 -24" stroke="#9ad85a" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>`;
+    case 'apple':
+    case 'peach':
+    case 'fruit':
+      return `<g>
+        <circle cx="0" cy="4" r="13" fill="#f0a050" stroke="#4a3f2f" stroke-width="2.4"/>
+        <path d="M0 -9 Q2 -20 8 -22" stroke="#7a5a2a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="10" cy="-16" rx="7" ry="4" fill="#9ad85a" stroke="#4a3f2f" stroke-width="1.8" transform="rotate(-20 10 -16)"/>
+      </g>`;
+    case 'berry':
+      return `<g>
+        <path d="M0 -4 Q-13 -2 -11 8 Q-8 18 0 18 Q8 18 11 8 Q13 -2 0 -4 Z" fill="#e0405a" stroke="#4a3f2f" stroke-width="2.4"/>
+        <path d="M-8 -6 Q0 -14 8 -6" fill="#7ac04a" stroke="#4a3f2f" stroke-width="2"/>
+        <circle cx="-4" cy="4" r="1.4" fill="#fff0a0"/><circle cx="4" cy="6" r="1.4" fill="#fff0a0"/>
+        <circle cx="0" cy="12" r="1.4" fill="#fff0a0"/>
+      </g>`;
+    default:
+      return '';
+  }
+}
+
+function bubbles(x1,x2,y1,y2,color,n,seed){
+  let s='';
+  let r = seed;
+  const rnd = ()=>{ r = (r*9301+49297)%233280; return r/233280; };
+  for(let i=0;i<n;i++){
+    const x = x1 + rnd()*(x2-x1);
+    const y = y1 + rnd()*(y2-y1);
+    const rad = 1.6 + rnd()*2.6;
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${color}" opacity=".65"/>`;
+  }
+  return s;
+}
+
+function iceCubes(seed){
+  const arr = [
+    {x:82,y:120,r:-12},{x:112,y:132,r:14},{x:96,y:148,r:6}
+  ];
+  return arr.map((c,i)=>`
+    <rect x="${c.x}" y="${c.y}" width="26" height="24" rx="7"
+      fill="rgba(255,255,255,.62)" stroke="#4a3f2f" stroke-width="2.2"
+      transform="rotate(${c.r} ${c.x+13} ${c.y+12})"/>
+  `).join('');
+}
+
+let artUid = 0;
+function artSVG(co){
+  const g = GLASSES[co.glass] || GLASSES.rocks;
+  const uid = 'g'+(artUid++);
+  const dark = shade(co.color,-38);
+  const light = shade(co.color,36);
+  const hasIce = ['rocks','highball','collins','tiki','hurricane','copper','wine'].includes(co.glass);
+  const fizz = /苏打|汤力|可乐|姜汁|香槟|起泡|汽水/.test(co.ingredients.map(i=>i.name).join(''));
+
+  let deco = '';
+  (co.deco||[]).forEach((d,i)=>{
+    const [rx,ry] = g.rim;
+    deco += `<g transform="translate(${rx + (i*6) - 4},${ry - 4 + (i*4)})" filter="url(#rough)">${drawDeco(d)}</g>`;
+  });
+
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${light}"/>
+      <stop offset="55%" stop-color="${co.color}"/>
+      <stop offset="100%" stop-color="${dark}"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="100" cy="180" rx="46" ry="7" fill="rgba(92,72,42,.10)"/>
+
+  <g filter="url(#rough)">
+    <!-- 玻璃底色 -->
+    <path d="${g.body}" fill="rgba(255,255,255,.55)" stroke="none"/>
+    <!-- 液体 -->
+    <path d="${g.liquid}" fill="url(#${uid})"/>
+    ${hasIce ? iceCubes(3) : ''}
+    ${fizz ? bubbles(80,120,90,160,'#ffffff',14, uid.length*37+11) : ''}
+    <!-- 玻璃轮廓 -->
+    <path d="${g.body}" fill="none" stroke="#4a3f2f" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${(g.extras||[]).map(e=>`<path d="${e}" fill="none" stroke="#4a3f2f" stroke-width="3.2" stroke-linecap="round"/>`).join('')}
+  </g>
+
+  <!-- 装饰 -->
+  ${deco}
+</svg>`;
+}
+
+/* ============================================================
+   5. 配料小图标
+   ============================================================ */
+const ICONS = {
+  bottle:`<svg viewBox="0 0 32 32"><path d="M13 3h6v5l3 5v13a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3V13l3-5z" fill="#f0dcb4" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><rect x="11" y="17" width="10" height="8" rx="1.5" fill="#c98a4b" stroke="#4a3f2f" stroke-width="1.6"/><path d="M13 3h6" stroke="#4a3f2f" stroke-width="1.9" stroke-linecap="round"/></svg>`,
+  lime:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#b8e05a" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="16" cy="16" r="7.5" fill="#e0f5a0" stroke="#7aa838" stroke-width="1.4"/><path d="M16 9v14M9.5 12.5l13 7M9.5 19.5l13-7" stroke="#7aa838" stroke-width="1.2" fill="none"/></svg>`,
+  lemon:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#f5d94a" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="16" cy="16" r="7.5" fill="#fdf0a0" stroke="#d4b62a" stroke-width="1.4"/><path d="M16 9v14M9.5 12.5l13 7M9.5 19.5l13-7" stroke="#d4b62a" stroke-width="1.2" fill="none"/></svg>`,
+  cherry:`<svg viewBox="0 0 32 32"><path d="M14 14 Q16 5 24 3" stroke="#5a7a2a" stroke-width="1.9" fill="none" stroke-linecap="round"/><circle cx="11" cy="21" r="7" fill="#d92b3a" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="23" cy="23" r="6" fill="#e84550" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="9" cy="18" r="2" fill="#ff9aa0"/></svg>`,
+  mint:`<svg viewBox="0 0 32 32"><path d="M16 29 Q15 16 20 5" stroke="#4a7a2a" stroke-width="1.9" fill="none" stroke-linecap="round"/><ellipse cx="9" cy="16" rx="6.5" ry="4.2" fill="#9ad85a" stroke="#4a3f2f" stroke-width="1.7" transform="rotate(-28 9 16)"/><ellipse cx="24" cy="11" rx="6.5" ry="4.2" fill="#b8e878" stroke="#4a3f2f" stroke-width="1.7" transform="rotate(24 24 11)"/></svg>`,
+  ice:`<svg viewBox="0 0 32 32"><rect x="5" y="7" width="14" height="13" rx="3.5" fill="rgba(180,220,240,.85)" stroke="#4a3f2f" stroke-width="1.8" transform="rotate(-10 12 13)"/><rect x="14" y="14" width="13" height="12" rx="3.5" fill="rgba(200,235,250,.9)" stroke="#4a3f2f" stroke-width="1.8" transform="rotate(8 20 20)"/></svg>`,
+  sugar:`<svg viewBox="0 0 32 32"><path d="M8 12h16l-2 15H10z" fill="#f4f0e0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M11 12 L16 4 L21 12" fill="#fffdf5" stroke="#4a3f2f" stroke-width="1.8" stroke-linejoin="round"/><circle cx="14" cy="19" r="1.5" fill="#c8b89a"/><circle cx="19" cy="22" r="1.5" fill="#c8b89a"/></svg>`,
+  soda:`<svg viewBox="0 0 32 32"><path d="M9 8h14l-1.5 19h-11z" fill="rgba(200,235,250,.8)" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><circle cx="14" cy="17" r="2" fill="#fff"/><circle cx="19" cy="21" r="1.6" fill="#fff"/><circle cx="16" cy="24" r="1.3" fill="#fff"/><path d="M9 8h14" stroke="#4a3f2f" stroke-width="1.9" stroke-linecap="round"/></svg>`,
+  juice:`<svg viewBox="0 0 32 32"><path d="M9 10h14l-1.5 17h-11z" fill="#f0a040" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M18 10 L22 3" stroke="#4a3f2f" stroke-width="1.9" stroke-linecap="round"/><path d="M9 15h14" stroke="#4a3f2f" stroke-width="1.2" opacity=".4"/></svg>`,
+  cream:`<svg viewBox="0 0 32 32"><path d="M11 28 Q6 20 10 14 Q13 9 16 12 Q19 8 22 13 Q26 19 21 28 Z" fill="#fffaf0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M16 5 Q17 10 15 13" stroke="#4a3f2f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  coffee:`<svg viewBox="0 0 32 32"><path d="M7 12h16v10a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z" fill="#c89a6a" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M23 15h3a3 3 0 0 1 0 6h-3" fill="none" stroke="#4a3f2f" stroke-width="1.8"/><path d="M12 8q1-3 0-5M17 8q1-3 0-5" stroke="#4a3f2f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  salt:`<svg viewBox="0 0 32 32"><path d="M8 13h16l-2 15H10z" fill="#f4f0e0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M11 13 L16 5 L21 13" fill="#fffdf5" stroke="#4a3f2f" stroke-width="1.8" stroke-linejoin="round"/><circle cx="14" cy="20" r="1.4" fill="#b8b0a0"/><circle cx="19" cy="23" r="1.4" fill="#b8b0a0"/></svg>`,
+  olive:`<svg viewBox="0 0 32 32"><path d="M16 3 L16 22" stroke="#c8a86a" stroke-width="1.9" stroke-linecap="round"/><ellipse cx="16" cy="24" rx="7" ry="8" fill="#8aa83a" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="16" cy="23" r="2.4" fill="#c8503a"/></svg>`,
+  pineapple:`<svg viewBox="0 0 32 32"><path d="M8 14 Q16 9 24 14 L21 27 Q16 30 11 27 Z" fill="#f0c040" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M14 13 Q11 5 15 2 Q16 8 16 13" fill="#7ac04a" stroke="#4a3f2f" stroke-width="1.6"/><path d="M17 13 Q20 4 25 5 Q21 10 18 13" fill="#9ad85a" stroke="#4a3f2f" stroke-width="1.6"/></svg>`,
+  coconut:`<svg viewBox="0 0 32 32"><circle cx="16" cy="18" r="11" fill="#e8dcc0" stroke="#4a3f2f" stroke-width="1.9"/><circle cx="12" cy="15" r="1.8" fill="#4a3f2f"/><circle cx="20" cy="15" r="1.8" fill="#4a3f2f"/><path d="M12 22 q4 4 8 0" stroke="#4a3f2f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  honey:`<svg viewBox="0 0 32 32"><path d="M8 12h16v13a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z" fill="#f0c040" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><rect x="12" y="6" width="8" height="6" rx="1.5" fill="#e8b030" stroke="#4a3f2f" stroke-width="1.7"/><path d="M11 18h10" stroke="#4a3f2f" stroke-width="1.2" opacity=".4"/></svg>`,
+  spice:`<svg viewBox="0 0 32 32"><rect x="10" y="6" width="12" height="20" rx="5" fill="#c87a3a" stroke="#4a3f2f" stroke-width="1.9"/><path d="M10 12h12M10 20h12" stroke="#a0602a" stroke-width="1.3"/></svg>`,
+  ginger:`<svg viewBox="0 0 32 32"><path d="M7 18 Q6 10 13 8 Q18 6 21 11 Q27 12 25 18 Q23 25 16 25 Q9 25 7 18 Z" fill="#e8d090" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M13 12 q3 3 2 8" stroke="#c8b070" stroke-width="1.4" fill="none"/></svg>`,
+  berry:`<svg viewBox="0 0 32 32"><path d="M16 8 Q6 10 7 19 Q8 28 16 28 Q24 28 25 19 Q26 10 16 8 Z" fill="#e0405a" stroke="#4a3f2f" stroke-width="1.9"/><path d="M10 7 Q16 1 22 7" fill="#7ac04a" stroke="#4a3f2f" stroke-width="1.7"/><circle cx="13" cy="16" r="1.3" fill="#fff0a0"/><circle cx="19" cy="18" r="1.3" fill="#fff0a0"/><circle cx="16" cy="23" r="1.3" fill="#fff0a0"/></svg>`,
+  tea:`<svg viewBox="0 0 32 32"><path d="M9 12h14v11a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z" fill="#e8c88a" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M22 15h3a3 3 0 0 1 0 6h-3" fill="none" stroke="#4a3f2f" stroke-width="1.8"/><path d="M12 8 q2-3 0-5" stroke="#4a3f2f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  water:`<svg viewBox="0 0 32 32"><path d="M16 4 Q25 16 25 21 A9 9 0 0 1 7 21 Q7 16 16 4 Z" fill="#a8d8f0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 20 a4 4 0 0 0 3 4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  bitter:`<svg viewBox="0 0 32 32"><path d="M13 3h4v9l3 4v11a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V16l3-4z" fill="#e8d8b0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 22h7" stroke="#c8503a" stroke-width="3" stroke-linecap="round"/></svg>`,
+  tomato:`<svg viewBox="0 0 32 32"><circle cx="16" cy="19" r="10" fill="#e04a3a" stroke="#4a3f2f" stroke-width="1.9"/><path d="M16 9 q-4-5-8-3 q3 2 4 4 M16 9 q4-5 8-3 q-3 2-4 4" fill="#7ac04a" stroke="#4a3f2f" stroke-width="1.6"/></svg>`,
+  cucumber:`<svg viewBox="0 0 32 32"><rect x="4" y="13" width="24" height="9" rx="4.5" fill="#a8d868" stroke="#4a3f2f" stroke-width="1.9" transform="rotate(-18 16 17)"/><circle cx="12" cy="16" r="1.3" fill="#7aa838"/><circle cx="19" cy="18" r="1.3" fill="#7aa838"/></svg>`,
+  watermelon:`<svg viewBox="0 0 32 32"><path d="M4 24 A20 20 0 0 1 28 24 Z" fill="#e8465a" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><path d="M4 24 A20 20 0 0 1 28 24" fill="none" stroke="#7ac04a" stroke-width="4"/><circle cx="12" cy="21" r="1.2" fill="#4a3f2f"/><circle cx="19" cy="22" r="1.2" fill="#4a3f2f"/></svg>`,
+  fruit:`<svg viewBox="0 0 32 32"><circle cx="16" cy="19" r="10" fill="#f0a050" stroke="#4a3f2f" stroke-width="1.9"/><path d="M16 9 Q18 3 23 2" stroke="#7a5a2a" stroke-width="1.9" fill="none" stroke-linecap="round"/><ellipse cx="23" cy="6" rx="5" ry="3" fill="#9ad85a" stroke="#4a3f2f" stroke-width="1.5" transform="rotate(-20 23 6)"/></svg>`,
+  chocolate:`<svg viewBox="0 0 32 32"><rect x="6" y="7" width="20" height="19" rx="3" fill="#6b4020" stroke="#4a3f2f" stroke-width="1.9"/><path d="M6 14h20M6 20h20M16 7v19" stroke="#4a3f2f" stroke-width="1.4" opacity=".55"/></svg>`,
+  vanilla:`<svg viewBox="0 0 32 32"><path d="M8 26 Q10 12 24 5" stroke="#6b4020" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M8 26 Q10 12 24 5" stroke="#a8703a" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  egg:`<svg viewBox="0 0 32 32"><path d="M16 4 Q25 14 25 20 A9 9 0 0 1 7 20 Q7 14 16 4 Z" fill="#fdf6e0" stroke="#4a3f2f" stroke-width="1.9" stroke-linejoin="round"/><circle cx="16" cy="21" r="4.5" fill="#f0c040" stroke="#4a3f2f" stroke-width="1.4"/></svg>`,
+  pepper:`<svg viewBox="0 0 32 32"><path d="M12 8 Q20 6 22 14 Q24 24 16 26 Q8 24 10 16 Q11 10 12 8 Z" fill="#d93a2a" stroke="#4a3f2f" stroke-width="1.9"/><path d="M12 8 Q14 4 18 4" stroke="#4a7a2a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`
+};
+
+const RULES = [
+  [/青柠|莱姆/, 'lime'],
+  [/柠檬/, 'lemon'],
+  [/樱桃|车厘子/, 'cherry'],
+  [/薄荷|罗勒|迷迭香|百里香|薰衣草|叶/, 'mint'],
+  [/冰块|碎冰|冰$/, 'ice'],
+  [/糖浆|红糖|方糖|糖|蜂蜜/, 'sugar'],
+  [/苏打|汤力|姜汁啤酒|汽水|香槟|起泡|可乐|普罗塞克|雪碧/, 'soda'],
+  [/橙汁|菠萝汁|蔓越莓汁|西柚汁|果汁|番茄汁|椰子水|桃泥|果泥|芒果泥|西瓜汁|黄瓜汁|荔枝汁|葡萄汁|苹果汁|黑加仑|柚子茶|话梅/, 'juice'],
+  [/奶油|牛奶|酸奶|冰淇淋/, 'cream'],
+  [/咖啡|浓缩/, 'coffee'],
+  [/盐/, 'salt'],
+  [/橄榄/, 'olive'],
+  [/菠萝/, 'pineapple'],
+  [/椰/, 'coconut'],
+  [/蜂蜜/, 'honey'],
+  [/肉桂|豆蔻|丁香|八角|香料|粉/, 'spice'],
+  [/姜/, 'ginger'],
+  [/草莓|蓝莓|覆盆莓|莓|蔓越莓|果酱|覆盆子/, 'berry'],
+  [/茶/, 'tea'],
+  [/水/, 'water'],
+  [/苦精|苦酒/, 'bitter'],
+  [/番茄/, 'tomato'],
+  [/黄瓜/, 'cucumber'],
+  [/西瓜/, 'watermelon'],
+  [/苹果|桃|梨|葡萄|芒果|百香果|荔枝|香蕉|柚子|杏|梅|洛神|桂花|玫瑰|水果|时令|罐头/, 'fruit'],
+  [/巧克力|可可/, 'chocolate'],
+  [/香草/, 'vanilla'],
+  [/蛋|蛋白/, 'egg'],
+  [/辣椒|辣酱|塔巴斯科/, 'pepper'],
+  [/橙皮/, 'orange'],
+  [/酒|朗姆|伏特加|金酒|龙舌兰|威士忌|白兰地|利口酒|苦艾|波本|干邑|清酒|烧酒|味美思|阿佩罗|金巴利|君度|香博|桑布卡|皮斯科|梅斯卡尔|阿玛罗|查特|利莱|开胃酒|本笃会|雪莉|蒙特内罗|白酒|米酒/, 'bottle']
+];
+
+function iconFor(name){
+  for(const [re,key] of RULES){
+    if(re.test(name)) return ICONS[key] || ICONS.bottle;
+  }
+  return ICONS.bottle;
+}
+/* ============ 步骤插图 ============ */
+const STEP_ICONS = {
+  shake: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="56" rx="16" ry="3" fill="rgba(92,72,42,.10)"/><path d="M18 22 L46 22 L42 52 Q32 57 22 52 Z" fill="#f0e8d0" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M18 22 L22 12 L42 12 L46 22 Z" fill="#faf4e2" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M25 12 L25 6 L39 6 L39 12" fill="#e8dcc0" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M22 30 L42 30" stroke="#d4c8a8" stroke-width="2"/><path d="M10 28 Q6 24 10 20" stroke="#c98a4b" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M54 28 Q58 24 54 20" stroke="#c98a4b" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`,
+  stir: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 26 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 26 Z" fill="rgba(230,240,220,.6)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 40 L23 50 Q23 52 25 52 L39 52 Q41 52 41 50 L41 40 Z" fill="#d9eab0"/><path d="M36 14 L36 48" stroke="#4a3f2f" stroke-width="2.6" stroke-linecap="round"/><path d="M36 14 L36 8" stroke="#c98a4b" stroke-width="3.4" stroke-linecap="round"/><path d="M36 18 Q30 22 26 26" stroke="#4a3f2f" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`,
+  pour: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 28 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 28 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 42 L23 50 Q23 52 25 52 L39 52 Q41 52 41 50 L41 42 Z" fill="#e0a13c"/><g transform="rotate(30 44 16)"><path d="M38 8 L50 8 L50 22 L38 22 Z" fill="#f0dcb4" stroke="#4a3f2f" stroke-width="2.6" stroke-linejoin="round"/><path d="M50 11 L56 11 L56 19 L50 19" fill="none" stroke="#4a3f2f" stroke-width="2.6" stroke-linejoin="round"/></g><path d="M40 30 Q36 36 34 42" stroke="#c98a4b" stroke-width="3.2" fill="none" stroke-linecap="round"/></svg>`,
+  ice: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 26 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 26 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><rect x="24" y="30" width="14" height="12" rx="3" fill="rgba(200,235,250,.9)" stroke="#4a3f2f" stroke-width="2.2" transform="rotate(-8 31 36)"/><rect x="32" y="38" width="13" height="11" rx="3" fill="rgba(220,245,255,.9)" stroke="#4a3f2f" stroke-width="2.2" transform="rotate(10 38 43)"/><path d="M8 22 L14 22 M11 19 L11 25" stroke="#c98a4b" stroke-width="2.4" stroke-linecap="round"/></svg>`,
+  garnish: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 28 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 28 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><circle cx="42" cy="22" r="9" fill="#f5d94a" stroke="#4a3f2f" stroke-width="2.4"/><circle cx="42" cy="22" r="5.5" fill="#fdf0a0" stroke="#d4b62a" stroke-width="1.4"/><path d="M37 22 L47 22 M42 17 L42 27 M38 18 L46 26 M38 26 L46 18" stroke="#d4b62a" stroke-width="1.2"/><path d="M24 12 Q26 8 32 8 Q38 8 40 12" stroke="#7ac04a" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`,
+  muddle: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 26 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 26 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><ellipse cx="30" cy="46" rx="7" ry="4" fill="#9ad85a" stroke="#4a3f2f" stroke-width="2" transform="rotate(-14 30 46)"/><ellipse cx="37" cy="44" rx="6" ry="3.5" fill="#b8e878" stroke="#4a3f2f" stroke-width="2" transform="rotate(20 37 44)"/><path d="M32 8 L32 40" stroke="#4a3f2f" stroke-width="3" stroke-linecap="round"/><path d="M27 8 L37 8" stroke="#c98a4b" stroke-width="3.4" stroke-linecap="round"/></svg>`,
+  strain: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M22 30 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L42 30 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 44 L23 50 Q23 52 25 52 L39 52 Q41 52 41 50 L41 44 Z" fill="#e8b070"/><ellipse cx="32" cy="22" rx="14" ry="5" fill="none" stroke="#4a3f2f" stroke-width="2.6"/><path d="M18 22 L46 22" stroke="#4a3f2f" stroke-width="2.6"/><path d="M22 22 L20 28 M32 22 L32 30 M42 22 L44 28 M27 22 L25 27 M37 22 L39 27" stroke="#4a3f2f" stroke-width="1.8"/><path d="M30 32 L30 40 M34 34 L34 42 M32 36 L32 44" stroke="#c98a4b" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  squeeze: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="34" r="13" fill="#b8e05a" stroke="#4a3f2f" stroke-width="2.6"/><circle cx="24" cy="34" r="8" fill="#e0f5a0" stroke="#7aa838" stroke-width="1.6"/><path d="M16 34 L32 34 M24 26 L24 42" stroke="#7aa838" stroke-width="1.4"/><path d="M40 20 Q44 26 42 34" stroke="#c98a4b" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M44 36 Q40 40 42 44 Q44 48 48 46" stroke="#c98a4b" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="46" cy="52" r="2" fill="#c98a4b"/></svg>`,
+  fizz: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 24 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 24 Z" fill="rgba(230,245,250,.6)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 38 L23 50 Q23 52 25 52 L39 52 Q41 52 41 50 L41 38 Z" fill="#a8d8f0"/><circle cx="27" cy="18" r="3" fill="none" stroke="#4a3f2f" stroke-width="2"/><circle cx="36" cy="12" r="2.2" fill="none" stroke="#4a3f2f" stroke-width="2"/><circle cx="30" cy="8" r="1.6" fill="#4a3f2f"/><circle cx="40" cy="20" r="1.8" fill="#4a3f2f"/><circle cx="26" cy="44" r="1.8" fill="#fff"/><circle cx="34" cy="46" r="1.4" fill="#fff"/></svg>`,
+  flame: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="16" ry="3" fill="rgba(92,72,42,.10)"/><path d="M26 52 L26 34 Q26 28 32 28 Q38 28 38 34 L38 52 Z" fill="#e8e0c0" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M27 34 L27 44 L37 44 L37 34 Z" fill="#c98a4b"/><path d="M32 6 Q24 14 26 22 Q28 26 32 26 Q36 26 38 22 Q40 14 32 6 Z" fill="#f0a030" stroke="#4a3f2f" stroke-width="2.4" stroke-linejoin="round"/><path d="M32 12 Q28 18 30 22 Q32 24 34 22 Q36 18 32 12 Z" fill="#f5d94a"/></svg>`,
+  rim: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><path d="M12 26 L52 26 L44 46 Q32 52 20 46 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M12 26 L52 26" stroke="#4a3f2f" stroke-width="2.8"/><path d="M12 26 L10 30 M18 26 L17 30 M26 26 L26 30 M34 26 L34 30 M42 26 L43 30 M50 26 L52 30" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="18" cy="22" rx="6" ry="3" fill="#fffdf5" stroke="#4a3f2f" stroke-width="1.8"/><ellipse cx="44" cy="22" rx="6" ry="3" fill="#fffdf5" stroke="#4a3f2f" stroke-width="1.8"/></svg>`,
+  layer: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 20 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 20 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 44 L23 50 Q23 52 25 52 L39 52 Q41 52 41 50 L41 44 Z" fill="#c8503a"/><path d="M23 34 L23 44 L41 44 L41 34 Z" fill="#f0c040"/><path d="M23 24 L23 34 L41 34 L41 24 Z" fill="#8ac860"/><path d="M23 24 L41 24" stroke="#4a3f2f" stroke-width="1.4" opacity=".4"/></svg>`,
+  heat: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 22 L20 48 Q20 52 24 52 L40 52 Q44 52 44 48 L44 22 Z" fill="#e8d8c0" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M23 32 L23 48 Q23 50 25 50 L39 50 Q41 50 41 48 L41 32 Z" fill="#c8803a"/><path d="M46 30 Q52 30 52 36" stroke="#4a3f2f" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M26 14 Q24 10 26 6 M32 14 Q30 10 32 6 M38 14 Q36 10 38 6" stroke="#c98a4b" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`,
+  place: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M20 24 L20 50 Q20 54 24 54 L40 54 Q44 54 44 50 L44 24 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><circle cx="32" cy="16" r="6" fill="#d92b3a" stroke="#4a3f2f" stroke-width="2.2"/><path d="M32 10 Q34 4 40 3" stroke="#5a7a2a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M32 30 L32 40 M32 44 L32 46" stroke="#c98a4b" stroke-width="3" stroke-linecap="round"/><path d="M28 38 L32 44 L36 38" stroke="#c98a4b" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  dflt: `<svg viewBox="0 0 64 64" style="height:100%;width:auto;display:block" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="54" rx="18" ry="3" fill="rgba(92,72,42,.10)"/><path d="M18 24 L46 24 L32 44 Z" fill="rgba(230,240,220,.5)" stroke="#4a3f2f" stroke-width="2.8" stroke-linejoin="round"/><path d="M22 30 L42 30 L34 42 L30 42 Z" fill="#e0a13c"/><path d="M32 44 L32 52 M24 52 L40 52" stroke="#4a3f2f" stroke-width="2.6" stroke-linecap="round"/></svg>`
+};
+
+function iconForStep(text){
+  if(/点火|点燃|燃烧/.test(text)) return STEP_ICONS.flame;
+  if(/杯口|蘸|润湿|盐边|糖边|抹盐/.test(text)) return STEP_ICONS.rim;
+  if(/装饰|放樱桃|放青柠|放柠檬|放橙|薄荷枝|放菠萝|放草莓|放荔枝|放水果|以.*饰/.test(text)) return STEP_ICONS.garnish;
+  if(/苏打水|起泡|气泡|香槟|注满/.test(text)) return STEP_ICONS.fizz;
+  if(/分层|沉底|浮上|浮一层|分两层/.test(text)) return STEP_ICONS.layer;
+  if(/摇匀|摇壶|摇出|用力摇|干摇|再摇/.test(text)) return STEP_ICONS.shake;
+  if(/搅拌|搅匀|轻搅|搅动/.test(text)) return STEP_ICONS.stir;
+  if(/滤入|过滤|双重过滤|滤至/.test(text)) return STEP_ICONS.strain;
+  if(/压碎|轻压|压出|压入/.test(text)) return STEP_ICONS.muddle;
+  if(/挤|滴|油/.test(text)) return STEP_ICONS.squeeze;
+  if(/加冰|碎冰|冰块|加满冰|填满碎冰|堆满碎冰/.test(text)) return STEP_ICONS.ice;
+  if(/加热|热咖啡|热水|小火|趁热|温/.test(text)) return STEP_ICONS.heat;
+  if(/放入|置于|加入|丢入/.test(text)) return STEP_ICONS.place;
+  if(/倒入|注入|淋入|缓慢倒/.test(text)) return STEP_ICONS.pour;
+  return STEP_ICONS.dflt;
+}
+/* ============================================================
+   6. 卡牌堆
+   ============================================================ */
+const deck = document.getElementById('deck');
+const stepsView = document.getElementById('stepsView');
+const stepStage = document.getElementById('stepStage');
+const progFill = document.getElementById('progFill');
+const progLabel = document.getElementById('progLabel');
+
+const SLOT = {
+  '-1':{y:-160, s:0.86, o:0, z:1},
+  '0': {y:0,    s:1,    o:1, z:50},
+  '1': {y:16,   s:0.955,o:.92, z:40},
+  '2': {y:30,   s:0.912,o:.62, z:30},
+  '3': {y:42,   s:0.872,o:.34, z:20}
+};
+
+let cur = Math.floor(Math.random()*COCKTAILS.length);
+const pool = new Map();   // index -> element
+let view = 'deck';
+
+function makeCardEl(idx){
+  const co = COCKTAILS[idx];
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.dataset.idx = idx;
+
+  const ingRows = co.ingredients.map((ing,i)=>`
+    <div class="ing-row" style="animation-delay:${0.06*i + 0.08}s">
+      <div class="ing-ico">${iconFor(ing.name)}</div>
+      <div class="ing-main">
+        <div class="ing-top">
+          <span class="ing-name">${ing.name}</span>
+          <span class="ing-amt">${ing.amount}</span>
+        </div>
+        ${ing.alt ? `<div class="ing-alt">平替：${ing.alt}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="art">${artSVG(co)}</div>
+    <div class="name">${co.name}</div>
+    <div class="panel">
+      <div class="ing-tip">以下为日常食材平替版</div>
+      <div class="ing-list">${ingRows}</div>
+      <button class="make-btn">制作流程</button>
+    </div>
+  `;
+
+  el.querySelector('.make-btn').addEventListener('click', e=>{
+    e.stopPropagation();
+    openSteps(co);
+  });
+  el.querySelector('.art').addEventListener('click', e=>{
+    e.stopPropagation();
+    toggleExpand(el);
+  });
+
+  return el;
+}
+
+function toggleExpand(el){
+  if(view !== 'deck') return;
+  el.classList.toggle('expanded');
+}
+
+function transformFor(slot){
+  const s = SLOT[slot];
+  return `translate(-50%,-50%) translateY(${s.y}px) scale(${s.s})`;
+}
+
+function layout(animate=true){
+  for(let i=-1;i<=3;i++){
+    const idx = cur + i;
+    if(idx < 0 || idx >= COCKTAILS.length) continue;
+    let el = pool.get(idx);
+    if(!el){
+      el = makeCardEl(idx);
+      el.style.transition = 'none';
+      el.style.transform = `translate(-50%,-50%) translateY(-70vh) scale(.9)`;
+      el.style.opacity = '0';
+      deck.appendChild(el);
+      pool.set(idx, el);
+      // 强制 reflow 后再动
+      void el.offsetWidth;
+      el.style.transition = animate ? '' : 'none';
+    }
+    const s = SLOT[String(i)];
+    el.style.transform = transformFor(String(i));
+    el.style.opacity = String(s.o);
+    el.style.zIndex = String(s.z);
+    el.style.pointerEvents = (i === 0) ? 'auto' : 'none';
+  }
+  // 清理超出范围的
+  for(const [idx, el] of pool.entries()){
+    if(idx < cur - 1 || idx > cur + 3){
+      el.remove();
+      pool.delete(idx);
+    }
+  }
+}
+
+function goNext(){
+  if(cur >= COCKTAILS.length - 1) return;
+  const oldEl = pool.get(cur);
+  if(oldEl){
+    oldEl.style.transform = `translate(-50%,-50%) translateY(-130vh) rotate(-12deg)`;
+    oldEl.style.opacity = '0';
+    oldEl.style.zIndex = '99';
+    setTimeout(()=>{ oldEl.remove(); }, 440);
+    pool.delete(cur);
+  }
+  cur++;
+  layout();
+}
+
+function goPrev(){
+  if(cur <= 0) return;
+  const oldEl = pool.get(cur);
+  if(oldEl){
+    oldEl.style.transform = `translate(-50%,-50%) translateY(130vh) rotate(10deg)`;
+    oldEl.style.opacity = '0';
+    oldEl.style.zIndex = '99';
+    setTimeout(()=>{ oldEl.remove(); }, 440);
+    pool.delete(cur);
+  }
+  cur--;
+  layout();
+}
+
+/* 手势：上下滑动 */
+let drag = null;
+
+deck.addEventListener('pointerdown', e=>{
+  if(view !== 'deck') return;
+  if(e.target.closest('.panel')) return;
+  const card = e.target.closest('.card');
+  if(!card || !card.classList.contains('card')) return;
+  if(card !== pool.get(cur)) return;
+
+  drag = {
+    startY: e.clientY,
+    startX: e.clientX,
+    y: e.clientY,
+    moved: false,
+    el: card
+  };
+  card.style.transition = 'none';
+  card.setPointerCapture && card.setPointerCapture(e.pointerId);
+});
+
+deck.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  const dy = e.clientY - drag.startY;
+  const dx = e.clientX - drag.startX;
+  if(!drag.moved && Math.abs(dy) > 7 && Math.abs(dy) > Math.abs(dx)){
+    drag.moved = true;
+  }
+  if(drag.moved){
+    drag.el.style.transform =
+      `translate(-50%,-50%) translateY(${dy}px) rotate(${(dy*0.018).toFixed(2)}deg)`;
+    drag.el.style.opacity = String(Math.max(0.35, 1 - Math.abs(dy)/500));
+  }
+});
+
+deck.addEventListener('pointerup', e=>{
+  if(!drag) return;
+  const dy = e.clientY - drag.startY;
+  const el = drag.el;
+  el.style.transition = '';
+
+  if(drag.moved && Math.abs(dy) > 70){
+    if(dy < 0) goNext();
+    else goPrev();
+  }else{
+    el.style.transform = transformFor('0');
+    el.style.opacity = '1';
+  }
+  drag = null;
+});
+
+deck.addEventListener('pointercancel', ()=>{
+  if(drag){
+    drag.el.style.transition = '';
+    drag.el.style.transform = transformFor('0');
+    drag.el.style.opacity = '1';
+    drag = null;
+  }
+});
+
+/* ============================================================
+   7. 制作流程视图
+   ============================================================ */
+let stepCo = null, stepIdx = 0, stepEl = null;
+
+function openSteps(co){
+  if(!co.steps || !co.steps.length) return;
+  stepCo = co;
+  stepIdx = 0;
+  view = 'steps';
+  stepsView.classList.add('show');
+  renderStep(true);
+}
+
+function closeSteps(){
+  stepsView.classList.remove('show');
+  view = 'deck';
+  stepStage.innerHTML = '';
+  stepEl = null;
+}
+
+document.getElementById('closeSteps').addEventListener('click', closeSteps);
+
+function renderStep(isFirst){
+  const total = stepCo.steps.length;
+  progFill.style.width = ((stepIdx+1)/total*100) + '%';
+  progLabel.textContent = (stepIdx+1) + ' / ' + total;
+
+  if(stepEl) stepEl.remove();
+
+  const stepText = stepCo.steps[stepIdx];
+  const el = document.createElement('div');
+  el.className = 'step-card';
+  el.style.transition = 'none';
+  el.style.transform = `translate(-50%,-50%) translateY(30px) scale(.94)`;
+  el.style.opacity = '0';
+  el.innerHTML = `
+    <div class="step-badge">STEP ${String(stepIdx+1).padStart(2,'0')}</div>
+    <div style="flex:0 0 auto;height:90px;display:flex;align-items:center;justify-content:center;margin:0 0 10px;opacity:.92;">${iconForStep(stepText)}</div>
+    <div class="step-text">${stepText}</div>
+    <div class="step-dots">
+      ${stepCo.steps.map((_,i)=>`<i class="${i===stepIdx?'on':''}"></i>`).join('')}
+    </div>
+  `;
+  stepStage.appendChild(el);
+  stepEl = el;
+  void el.offsetWidth;
+  el.style.transition = '';
+  el.style.transform = `translate(-50%,-50%)`;
+  el.style.opacity = '1';
+}
+/* 左右滑动 */
+let sdrag = null;
+
+stepStage.addEventListener('pointerdown', e=>{
+  if(view !== 'steps') return;
+  sdrag = {startX:e.clientX, startY:e.clientY, x:e.clientX, moved:false};
+  stepStage.setPointerCapture && stepStage.setPointerCapture(e.pointerId);
+});
+
+stepStage.addEventListener('pointermove', e=>{
+  if(!sdrag || !stepEl) return;
+  const dx = e.clientX - sdrag.startX;
+  const dy = e.clientY - sdrag.startY;
+  if(!sdrag.moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)){
+    sdrag.moved = true;
+    stepEl.style.transition = 'none';
+  }
+  if(sdrag.moved){
+    stepEl.style.transform = `translate(-50%,-50%) translateX(${dx}px) rotate(${(dx*0.012).toFixed(2)}deg)`;
+    stepEl.style.opacity = String(Math.max(0.3, 1 - Math.abs(dx)/420));
+  }
+});
+
+stepStage.addEventListener('pointerup', e=>{
+  if(!sdrag) return;
+  const dx = e.clientX - sdrag.startX;
+  if(stepEl) stepEl.style.transition = '';
+
+  if(sdrag.moved && Math.abs(dx) > 65){
+    if(dx < 0){
+      // 下一步
+      if(stepIdx >= stepCo.steps.length - 1){
+        // 最后一页再翻 → 回主页面
+        if(stepEl){
+          stepEl.style.transform = `translate(-50%,-50%) translateX(-140%) rotate(-10deg)`;
+          stepEl.style.opacity = '0';
+        }
+        setTimeout(closeSteps, 280);
+      }else{
+        if(stepEl){
+          stepEl.style.transform = `translate(-50%,-50%) translateX(-140%) rotate(-10deg)`;
+          stepEl.style.opacity = '0';
+        }
+        const old = stepEl;
+        stepEl = null;
+        setTimeout(()=>{ if(old) old.remove(); }, 340);
+        stepIdx++;
+        progFill.style.width = ((stepIdx+1)/stepCo.steps.length*100)+'%';
+        progLabel.textContent = (stepIdx+1)+' / '+stepCo.steps.length;
+        setTimeout(()=>renderStep(false), 120);
+      }
+    }else{
+      // 上一步
+      if(stepIdx > 0){
+        if(stepEl){
+          stepEl.style.transform = `translate(-50%,-50%) translateX(140%) rotate(10deg)`;
+          stepEl.style.opacity = '0';
+        }
+        const old = stepEl;
+        stepEl = null;
+        setTimeout(()=>{ if(old) old.remove(); }, 340);
+        stepIdx--;
+        progFill.style.width = ((stepIdx+1)/stepCo.steps.length*100)+'%';
+        progLabel.textContent = (stepIdx+1)+' / '+stepCo.steps.length;
+        setTimeout(()=>renderStep(false), 120);
+      }else{
+        stepEl.style.transform = `translate(-50%,-50%)`;
+        stepEl.style.opacity = '1';
+      }
+    }
+  }else{
+    if(stepEl){
+      stepEl.style.transform = `translate(-50%,-50%)`;
+      stepEl.style.opacity = '1';
+    }
+  }
+  sdrag = null;
+});
+
+stepStage.addEventListener('pointercancel', ()=>{
+  if(stepEl){
+    stepEl.style.transition = '';
+    stepEl.style.transform = `translate(-50%,-50%)`;
+    stepEl.style.opacity = '1';
+  }
+  sdrag = null;
+});
+
+/* ============================================================
+   8. 启动
+   ============================================================ */
+layout(false);
+</script>
+</body>
+</html>
