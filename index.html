@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+<link rel="manifest" href="manifest.json">；
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -1308,5 +1309,6 @@ stepStage.addEventListener('pointercancel', ()=>{
    ============================================================ */
 layout(false);
 </script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}</script>
 </body>
 </html>
